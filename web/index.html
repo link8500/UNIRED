@@ -31,6 +31,15 @@
 
   <title>unired</title>
   <link rel="manifest" href="manifest.json">
+  <script>
+    // Flutter puede cancelar Ctrl + rueda al convertirlo en un gesto interno.
+    // Captúralo antes de que llegue al lienzo y conserva el zoom del navegador.
+    window.addEventListener('wheel', (event) => {
+      if (event.ctrlKey) {
+        event.stopImmediatePropagation();
+      }
+    }, { capture: true, passive: true });
+  </script>
 </head>
 <body>
   <!--

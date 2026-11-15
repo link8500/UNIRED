@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:unired/models/profile/widgets/account_menu.dart';
 
+import 'package:unired/core/services/app_service.dart';
 import 'package:unired/core/utils/app_navigator.dart';
-import 'package:unired/shared/extensions/context_extensions.dart';
 import 'package:unired/shared/themes/app_colors.dart';
 import 'package:unired/shared/widgets/brand_logo.dart';
+import 'package:unired/shared/widgets/notifications_button.dart';
 
-/// Navegación superior compartida por Home, Market, Tutorías y About.
+/// Navegación superior compartida por las páginas públicas.
+///
+/// Escucha la sesión local para mostrar acceso o perfil sin que cada página
+/// tenga que duplicar la lógica de navegación.
 class PublicHeader extends StatelessWidget {
   const PublicHeader({super.key, required this.currentRoute});
 
@@ -13,39 +18,70 @@ class PublicHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final wide = !context.isCompact;
-    return Container(
-      color: Colors.white,
-      padding: EdgeInsets.symmetric(horizontal: wide ? 42 : 20, vertical: 16),
-      child: wide
-          ? Row(
-              children: [
-                const BrandLogo(),
-                const SizedBox(width: 44),
-                Expanded(child: _links(context)),
-                _accessLink(context, 'Sign in', AppRoutes.login),
-                const SizedBox(width: 24),
-                _accessLink(context, 'Login', AppRoutes.login, active: true),
-              ],
-            )
-          : Row(
-              children: [
-                const BrandLogo(compact: true),
-                const Spacer(),
-                IconButton(
-                  onPressed: () => _showMenu(context),
-                  icon: const Icon(Icons.menu_rounded),
-                  color: AppColors.navy,
-                ),
-              ],
-            ),
+    return AnimatedBuilder(
+      animation: AppService.instance,
+      builder: (context, _) {
+        final user = AppService.instance.currentUser;
+        return Container(
+          color: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final wide =
+                  constraints.maxWidth >=
+                  850 * MediaQuery.textScalerOf(context).scale(1);
+              return wide
+                  ? Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 22),
+                      child: Row(
+                        children: [
+                          const BrandLogo(),
+                          const SizedBox(width: 44),
+                          Expanded(child: _links(context)),
+                          if (user != null) ...[
+                            if (user.verified) const NotificationsButton(),
+                            AccountMenu(user: user),
+                          ] else ...[
+                            TextButton(
+                              onPressed: () =>
+                                  AppNavigator.go(context, AppRoutes.login),
+                              child: const Text('Iniciar sesión'),
+                            ),
+                            FilledButton(
+                              onPressed: () =>
+                                  AppNavigator.go(context, AppRoutes.register),
+                              child: const Text('Crear cuenta'),
+                            ),
+                          ],
+                        ],
+                      ),
+                    )
+                  : Row(
+                      children: [
+                        const BrandLogo(compact: true),
+                        const Spacer(),
+                        if (user?.verified == true) const NotificationsButton(),
+                        if (user != null)
+                          AccountMenu(user: user, compact: true),
+                        IconButton(
+                          tooltip: 'Menú de navegación',
+                          onPressed: () => _showMenu(context),
+                          icon: const Icon(Icons.menu_rounded),
+                          color: AppColors.navy,
+                        ),
+                      ],
+                    );
+            },
+          ),
+        );
+      },
     );
   }
 
   Widget _links(BuildContext context) {
     final links = <({String label, String route})>[
-      (label: 'inicio', route: AppRoutes.home),
-      (label: 'sobre nosotros', route: AppRoutes.about),
+      (label: 'Inicio', route: AppRoutes.home),
+      (label: 'Sobre nosotros', route: AppRoutes.about),
       (label: 'Market', route: AppRoutes.market),
       (label: 'Tutorías', route: AppRoutes.tutorials),
     ];
@@ -77,43 +113,25 @@ class PublicHeader extends StatelessWidget {
     );
   }
 
-  Widget _accessLink(
-    BuildContext context,
-    String label,
-    String route, {
-    bool active = false,
-  }) {
-    return InkWell(
-      onTap: () => AppNavigator.go(context, route),
-      borderRadius: BorderRadius.circular(6),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: active ? AppColors.coral : AppColors.ink,
-          fontSize: 13,
-          fontWeight: active ? FontWeight.w800 : FontWeight.w500,
-        ),
-      ),
-    );
-  }
-
   void _showMenu(BuildContext context) {
+    final signedIn = AppService.instance.currentUser != null;
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
       backgroundColor: Colors.white,
-      builder: (_) => SafeArea(
-        child: Padding(
+      builder: (sheetContext) => SafeArea(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(22, 8, 22, 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              for (final item in const [
+              for (final item in [
                 ('Inicio', AppRoutes.home),
                 ('Sobre nosotros', AppRoutes.about),
                 ('Market', AppRoutes.market),
                 ('Tutorías', AppRoutes.tutorials),
-                ('Iniciar sesión', AppRoutes.login),
+                if (!signedIn) ('Iniciar sesión', AppRoutes.login),
+                if (!signedIn) ('Crear cuenta', AppRoutes.register),
               ])
                 ListTile(
                   title: Text(item.$1),
@@ -122,7 +140,7 @@ class PublicHeader extends StatelessWidget {
                     size: 14,
                   ),
                   onTap: () {
-                    Navigator.pop(context);
+                    Navigator.pop(sheetContext);
                     AppNavigator.go(context, item.$2);
                   },
                 ),

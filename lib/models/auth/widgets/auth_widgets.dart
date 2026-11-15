@@ -33,12 +33,24 @@ class AuthField extends StatelessWidget {
     required this.hint,
     this.icon,
     this.obscure = false,
+    this.controller,
+    this.validator,
+    this.keyboardType,
+    this.textInputAction,
+    this.onChanged,
+    this.suffixIcon,
   });
 
   final String label;
   final String hint;
   final IconData? icon;
   final bool obscure;
+  final TextEditingController? controller;
+  final String? Function(String?)? validator;
+  final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onChanged;
+  final Widget? suffixIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -54,11 +66,17 @@ class AuthField extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 7),
-        TextField(
+        TextFormField(
+          controller: controller,
           obscureText: obscure,
+          validator: validator,
+          keyboardType: keyboardType,
+          textInputAction: textInputAction,
+          onChanged: onChanged,
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: icon == null ? null : Icon(icon, size: 18),
+            suffixIcon: suffixIcon,
           ),
         ),
       ],

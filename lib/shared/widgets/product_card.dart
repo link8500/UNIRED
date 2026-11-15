@@ -1,131 +1,179 @@
 import 'package:flutter/material.dart';
-
 import 'package:unired/models/market/models/market_item.dart';
 import 'package:unired/shared/themes/app_colors.dart';
-import 'package:unired/shared/widgets/page_frame.dart';
+import 'package:unired/shared/widgets/api_widgets.dart';
+import 'package:unired/shared/widgets/publication_price.dart';
 
-/// Tarjeta única para cualquier producto del marketplace.
-///
-/// `prominent` permite que Home use una tarjeta más grande sin duplicar la
-/// estructura del componente que utiliza Market.
+/// El envase se muestra completo; precio, título y ubicación tienen una jerarquía fija.
 class ProductCard extends StatelessWidget {
-  const ProductCard({super.key, required this.item, this.prominent = false});
-
+  const ProductCard({
+    super.key,
+    required this.item,
+    this.prominent = false,
+    this.isFavorite = false,
+    this.onTap,
+    this.onFavorite,
+    this.compact = false,
+    this.badgeLabel,
+  });
   final MarketItem item;
-  final bool prominent;
-
+  final bool prominent, isFavorite, compact;
+  final VoidCallback? onTap, onFavorite;
+  final String? badgeLabel;
   @override
-  Widget build(BuildContext context) {
-    return SoftCard(
-      padding: EdgeInsets.zero,
+  Widget build(BuildContext context) => Material(
+    color: Colors.white,
+    clipBehavior: Clip.antiAlias,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(14),
+      side: const BorderSide(color: AppColors.line),
+    ),
+    child: InkWell(
+      onTap: onTap,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: item.accent,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(16),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                ColoredBox(
+                  color: const Color(0xFFFAFBFC),
+                  child: Padding(
+                    padding: EdgeInsets.all(compact ? 8 : 18),
+                    child: ApiImage(
+                      fileId: item.imageId,
+                      fit: BoxFit.contain,
+                      fallback: Icon(
+                        item.icon,
+                        color: AppColors.blue,
+                        size: 48,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-              child: Stack(
-                children: [
+                if (badgeLabel != null || item.status.label != 'Publicado')
                   Positioned(
-                    top: prominent ? 15 : 12,
-                    left: prominent ? 15 : 12,
+                    top: 12,
+                    left: 12,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
+                        horizontal: 10,
                         vertical: 5,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: .86),
-                        borderRadius: BorderRadius.circular(6),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        item.badge,
+                        badgeLabel ?? item.status.label,
                         style: const TextStyle(
                           fontSize: 10,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
                   ),
-                  Center(
-                    child: Icon(
-                      item.icon,
-                      size: prominent ? 82 : 68,
-                      color: AppColors.navy.withValues(alpha: .72),
-                    ),
-                  ),
+                if (onFavorite != null)
                   Positioned(
-                    bottom: 12,
-                    right: 12,
-                    child: Icon(
-                      Icons.favorite_border_rounded,
-                      color: AppColors.navy,
-                      size: prominent ? 20 : 19,
+                    top: 8,
+                    right: 8,
+                    child: IconButton.filledTonal(
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.white,
+                      ),
+                      tooltip: isFavorite
+                          ? 'Quitar de favoritos'
+                          : 'Guardar en favoritos',
+                      onPressed: onFavorite,
+                      icon: Icon(
+                        isFavorite ? Icons.favorite : Icons.favorite_border,
+                        size: 19,
+                        color: isFavorite ? AppColors.coral : AppColors.ink,
+                      ),
                     ),
                   ),
-                ],
-              ),
+              ],
             ),
           ),
           Padding(
-            padding: EdgeInsets.fromLTRB(
-              prominent ? 17 : 14,
-              prominent ? 15 : 13,
-              prominent ? 17 : 14,
-              prominent ? 17 : 15,
-            ),
+            padding: EdgeInsets.all(compact ? 10 : 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  item.category,
-                  style: TextStyle(
-                    fontSize: prominent ? 11 : 10,
-                    color: AppColors.muted,
+                if (!compact) ...[
+                  Text(
+                    item.category,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.muted,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 5),
+                  const SizedBox(height: 7),
+                ],
                 Text(
                   item.title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: prominent ? 15 : 14,
-                    height: 1.15,
+                    fontSize: compact ? 12 : 15,
+                    fontWeight: FontWeight.w700,
+                    height: 1.3,
+                    color: AppColors.navy,
                   ),
                 ),
                 const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Text(
-                      item.price,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.coralDark,
-                        fontSize: prominent ? 14 : 13,
-                      ),
+                if (['gratis', 'a_consultar'].contains(item.priceType))
+                  Text(
+                    item.displayPrice,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
                     ),
-                    const Spacer(),
-                    if (!prominent)
+                  )
+                else
+                  PublicationPrice(
+                    currency: item.currency,
+                    amount: item.amount,
+                    discountPercent: item.discountPercent,
+                    compact: compact,
+                  ),
+                if (!compact) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
                       const Icon(
-                        Icons.arrow_outward_rounded,
-                        color: AppColors.blue,
-                        size: 16,
+                        Icons.location_on_outlined,
+                        size: 13,
+                        color: AppColors.muted,
                       ),
-                  ],
-                ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          item.city.isEmpty ? item.seller : item.city,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.muted,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        item.condition,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
 }

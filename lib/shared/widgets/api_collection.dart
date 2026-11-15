@@ -1,0 +1,69 @@
+import 'package:flutter/material.dart';
+import 'package:unired/core/network/api_data.dart';
+import 'package:unired/core/services/app_service.dart';
+import 'package:unired/shared/widgets/api_widgets.dart';
+
+/// Una lectura por página, con reintento y paginación reutilizable.
+class ApiCollection extends StatefulWidget {
+  const ApiCollection({
+    super.key,
+    required this.path,
+    required this.builder,
+    this.query = const {},
+    this.empty,
+  });
+  final String path;
+  final Json query;
+  final Widget Function(List<Json>) builder;
+  final Widget? empty;
+  @override
+  State<ApiCollection> createState() => _ApiCollectionState();
+}
+
+class _ApiCollectionState extends State<ApiCollection> {
+  late Future<ApiPage> _result = _load();
+  Future<ApiPage> _load([int page = 1]) => AppService.instance.api.page(
+    widget.path,
+    page: page,
+    query: widget.query,
+  );
+  @override
+  Widget build(BuildContext context) => FutureBuilder<ApiPage>(
+    future: _result,
+    builder: (_, snapshot) {
+      if (snapshot.hasError) {
+        return Column(
+          children: [
+            ApiErrorNotice(message: snapshot.error.toString()),
+            ApiActionButton(
+              label: 'Reintentar',
+              action: () async {
+                setState(() => _result = _load());
+              },
+            ),
+          ],
+        );
+      }
+      if (!snapshot.hasData) {
+        return const ApiEmptyState(message: '', loading: true);
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (snapshot.data!.items.isEmpty)
+            widget.empty ??
+                const ApiEmptyState(message: 'Todavía no hay registros.')
+          else
+            widget.builder(snapshot.data!.items),
+          if (snapshot.data!.hasMore || snapshot.data!.page > 1)
+            ApiPagination(
+              page: snapshot.data,
+              load: (page) async {
+                setState(() => _result = _load(page));
+              },
+            ),
+        ],
+      );
+    },
+  );
+}

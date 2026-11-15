@@ -1,20 +1,30 @@
 import 'package:flutter/material.dart';
-
 import 'package:unired/models/admin/models/dashboard_data.dart';
 import 'package:unired/models/admin/widgets/dashboard_charts.dart';
+import 'package:unired/core/network/api_data.dart';
+import 'package:unired/core/utils/app_navigator.dart';
 import 'package:unired/shared/themes/app_colors.dart';
-import 'package:unired/shared/widgets/page_frame.dart';
+import 'package:unired/shared/widgets/admin_components.dart';
 
-/// Widgets visuales exclusivos del dashboard y reutilizables entre sus vistas.
 class DashboardStatCard extends StatelessWidget {
-  const DashboardStatCard({super.key, required this.stat});
-
+  const DashboardStatCard({
+    super.key,
+    required this.stat,
+    this.values = const [],
+    this.color = AppColors.blue,
+    this.icon = Icons.insights_outlined,
+    this.onTap,
+  });
   final DashboardStat stat;
-
+  final List<double> values;
+  final Color color;
+  final IconData icon;
+  final VoidCallback? onTap;
   @override
-  Widget build(BuildContext context) {
-    return SoftCard(
-      padding: const EdgeInsets.fromLTRB(18, 17, 18, 11),
+  Widget build(BuildContext context) => AdminSurface(
+    padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+    child: InkWell(
+      onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -23,222 +33,177 @@ class DashboardStatCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   stat.label,
-                  style: const TextStyle(fontSize: 11, color: AppColors.muted),
+                  style: const TextStyle(fontSize: 12, color: AppColors.ink),
                 ),
               ),
-              const Icon(
-                Icons.more_horiz_rounded,
-                size: 17,
-                color: AppColors.muted,
-              ),
+              Icon(icon, size: 17, color: color),
             ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            stat.value,
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w700,
+              color: color,
+              height: 1.1,
+            ),
           ),
           const SizedBox(height: 7),
           Text(
-            stat.value,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-              color: AppColors.navy,
-            ),
-          ),
-          const SizedBox(height: 3),
-          Row(
-            children: [
-              Icon(
-                stat.positive
-                    ? Icons.trending_up_rounded
-                    : Icons.trending_down_rounded,
-                size: 14,
-                color: stat.positive
-                    ? const Color(0xFF35B37D)
-                    : AppColors.coral,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                stat.change,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  color: stat.positive
-                      ? const Color(0xFF35B37D)
-                      : AppColors.coral,
-                ),
-              ),
-              const Text(
-                ' vs. mes anterior',
-                style: TextStyle(fontSize: 10, color: AppColors.muted),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          const Expanded(child: MiniSparkline()),
-        ],
-      ),
-    );
-  }
-}
-
-class SalesChartCard extends StatelessWidget {
-  const SalesChartCard({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return SoftCard(
-      padding: const EdgeInsets.fromLTRB(20, 19, 20, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Tendencia de ventas',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.navy,
-                  ),
-                ),
-              ),
-              Text(
-                'Últimos 30 días',
-                style: TextStyle(fontSize: 10, color: AppColors.muted),
-              ),
-            ],
-          ),
-          const SizedBox(height: 5),
-          const Text(
-            'C\$ 12,840',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-              color: AppColors.navy,
-            ),
-          ),
-          const SizedBox(height: 11),
-          const SizedBox(height: 190, child: SalesLineChart()),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Ago 01',
-                style: TextStyle(fontSize: 9, color: AppColors.muted),
-              ),
-              Text(
-                'Ago 08',
-                style: TextStyle(fontSize: 9, color: AppColors.muted),
-              ),
-              Text(
-                'Ago 15',
-                style: TextStyle(fontSize: 9, color: AppColors.muted),
-              ),
-              Text(
-                'Ago 22',
-                style: TextStyle(fontSize: 9, color: AppColors.muted),
-              ),
-              Text(
-                'Ago 30',
-                style: TextStyle(fontSize: 9, color: AppColors.muted),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class CategoryChartCard extends StatelessWidget {
-  const CategoryChartCard({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return SoftCard(
-      padding: const EdgeInsets.fromLTRB(20, 19, 20, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Ingresos por categoría',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: AppColors.navy,
-            ),
-          ),
-          const SizedBox(height: 22),
-          Row(
-            children: [
-              const SizedBox(
-                width: 142,
-                height: 142,
-                child: CategoryDonutChart(),
-              ),
-              const SizedBox(width: 17),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ChartLegend(
-                      color: AppColors.blue,
-                      title: 'Material académico',
-                      value: '45%',
-                    ),
-                    SizedBox(height: 14),
-                    ChartLegend(
-                      color: AppColors.coral,
-                      title: 'Tecnología',
-                      value: '31%',
-                    ),
-                    SizedBox(height: 14),
-                    ChartLegend(
-                      color: Color(0xFFFFC62F),
-                      title: 'Cursos y tutorías',
-                      value: '24%',
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class ChartLegend extends StatelessWidget {
-  const ChartLegend({
-    super.key,
-    required this.color,
-    required this.title,
-    required this.value,
-  });
-
-  final Color color;
-  final String title;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            title,
+            stat.change,
             style: const TextStyle(fontSize: 10, color: AppColors.muted),
           ),
+          const SizedBox(height: 9),
+          DashboardSparkline(values: values, color: color),
+        ],
+      ),
+    ),
+  );
+}
+
+class DashboardTutorRanking extends StatelessWidget {
+  const DashboardTutorRanking({
+    super.key,
+    required this.rows,
+    required this.pending,
+  });
+  final List<Json> rows;
+  final List<Json> pending;
+  @override
+  Widget build(BuildContext context) {
+    final max = rows.isEmpty
+        ? 1
+        : intValue(rows.first['alumnos']).clamp(1, 1 << 30);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AdminSurface(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const AdminSectionHeading(
+                'Tutores más demandados',
+                subtitle: 'Inscripciones activas y completadas',
+              ),
+              const Divider(height: 28),
+              if (rows.isEmpty)
+                const AdminEmpty(
+                  'Aún no hay tutores',
+                  message: 'El ranking aparecerá cuando se creen tutorías.',
+                  icon: Icons.school_outlined,
+                ),
+              for (var i = 0; i < rows.length; i++)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 19),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          SizedBox(
+                            width: 20,
+                            child: Text(
+                              '${i + 1}'.padLeft(2, '0'),
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: AppColors.muted,
+                              ),
+                            ),
+                          ),
+                          AdminAvatar(
+                            name: textValue(rows[i]['nombre']),
+                            fileId: rows[i]['avatarArchivoId']?.toString(),
+                            radius: 15,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  textValue(rows[i]['nombre']),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                Text(
+                                  '${textValue(rows[i]['cursos'])} tutorías',
+                                  style: const TextStyle(
+                                    fontSize: 9,
+                                    color: AppColors.muted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Text(
+                            textValue(rows[i]['alumnos']),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      LinearProgressIndicator(
+                        value: intValue(rows[i]['alumnos']) / max,
+                        minHeight: 3,
+                        color: i == 0 ? AppColors.coral : AppColors.blue,
+                        backgroundColor: const Color(0xFFF0F1F3),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ),
-        Text(
-          value,
-          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
+        const SizedBox(height: 16),
+        AdminSurface(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AdminSectionHeading(
+                'Por revisar',
+                subtitle: 'Solicitudes de acreditación',
+                action: IconButton(
+                  tooltip: 'Abrir acreditaciones',
+                  onPressed: () =>
+                      AppNavigator.go(context, AppRoutes.adminAccreditation),
+                  icon: const Icon(Icons.arrow_forward, size: 16),
+                ),
+              ),
+              if (pending.isEmpty)
+                const AdminEmpty(
+                  'Todo al día',
+                  message: 'No hay solicitudes pendientes.',
+                  icon: Icons.task_alt,
+                ),
+              for (final row in pending)
+                ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(
+                    Icons.description_outlined,
+                    color: AppColors.coral,
+                  ),
+                  title: Text(
+                    textValue(row['nombre']),
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                  subtitle: Text(
+                    textValue(row['area']),
+                    style: const TextStyle(fontSize: 10),
+                  ),
+                  onTap: () =>
+                      AppNavigator.go(context, AppRoutes.adminAccreditation),
+                ),
+            ],
+          ),
         ),
       ],
     );

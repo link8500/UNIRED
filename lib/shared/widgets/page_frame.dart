@@ -26,10 +26,19 @@ class PublicPageFrame extends StatelessWidget {
           children: [
             PublicHeader(currentRoute: route),
             Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [body, if (showFooter) const PublicFooter()],
-                ),
+              child: CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(child: body),
+                  // Rellena las vistas cortas y mantiene el footer al final.
+                  if (showFooter)
+                    const SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Align(
+                        alignment: Alignment.bottomCenter,
+                        child: PublicFooter(),
+                      ),
+                    ),
+                ],
               ),
             ),
           ],
@@ -114,7 +123,9 @@ class SoftCard extends StatelessWidget {
           ),
         ],
       ),
-      child: child,
+      // Superficie propia para que los ListTile de ajustes dibujen su tinta
+      // encima del fondo de la tarjeta y no en el Material del Scaffold.
+      child: Material(type: MaterialType.transparency, child: child),
     );
   }
 }

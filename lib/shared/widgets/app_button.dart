@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:unired/shared/themes/app_colors.dart';
 
+/// Botón principal coral compartido por los formularios y llamadas a la acción.
 class CoralButton extends StatelessWidget {
   const CoralButton({
     super.key,
@@ -27,6 +28,7 @@ class CoralButton extends StatelessWidget {
   }
 }
 
+/// Botón de acceso social con la marca visual de Google.
 class GoogleButton extends StatelessWidget {
   const GoogleButton({super.key, this.onPressed, this.expand = false});
 
@@ -51,18 +53,25 @@ class GoogleButton extends StatelessWidget {
   }
 }
 
+/// Botón social genérico para las opciones decorativas del acceso.
 class SocialButton extends StatelessWidget {
-  const SocialButton({super.key, required this.icon, required this.label});
+  const SocialButton({
+    super.key,
+    required this.icon,
+    required this.label,
+    this.onPressed,
+  });
 
   final IconData icon;
   final String label;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: 238,
       child: OutlinedButton.icon(
-        onPressed: () {},
+        onPressed: onPressed,
         icon: Icon(icon, size: 16, color: AppColors.coral),
         label: Text(label),
         style: OutlinedButton.styleFrom(

@@ -11,12 +11,15 @@ class StatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final good = status == 'Completado' || status == 'Activo';
-    final pending = status == 'Pendiente';
+    final good =
+        status == 'Completado' || status == 'Activo' || status == 'Publicado';
+    final pending = status == 'Pendiente' || status == 'Borrador';
     final color = good
         ? const Color(0xFF18885E)
         : pending
         ? const Color(0xFFB18300)
+        : status == 'Archivado' || status == 'Inactivo'
+        ? AppColors.muted
         : AppColors.coralDark;
     return Container(
       padding: EdgeInsets.symmetric(
@@ -31,7 +34,7 @@ class StatusPill extends StatelessWidget {
         status,
         style: TextStyle(
           color: color,
-          fontSize: compact ? 8 : 9,
+          fontSize: compact ? 9 : 10,
           fontWeight: FontWeight.w800,
         ),
       ),
