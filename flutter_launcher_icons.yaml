@@ -1,0 +1,22 @@
+# Ejecuta desde la raíz del proyecto: dart run flutter_launcher_icons
+flutter_launcher_icons:
+  image_path: assets/branding/unired-app-icon.png
+
+  # Iconos clásicos y adaptativos para Android.
+  android: true
+  min_sdk_android: 21
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: assets/branding/unired-app-icon.png
+  adaptive_icon_foreground_inset: 16
+
+  # iOS necesita iconos sin transparencia.
+  ios: true
+  remove_alpha_ios: true
+  background_color_ios: "#FFFFFF"
+
+  # Favicon e iconos de instalación de la aplicación web.
+  web:
+    generate: true
+    image_path: assets/branding/unired-app-icon.png
+    background_color: "#FFFFFF"
+    theme_color: "#0079D3"
