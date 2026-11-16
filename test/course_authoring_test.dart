@@ -1,18 +1,18 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:unired/core/network/api_client.dart';
-import 'package:unired/core/network/api_data.dart';
-import 'package:unired/core/services/app_service.dart';
-import 'package:unired/models/admin/widgets/publication_editor.dart';
-import 'package:unired/models/auth/models/app_user.dart';
-import 'package:unired/models/tutorials/widgets/course_curriculum_editor.dart';
-import 'package:unired/models/tutorials/widgets/course_lesson_editor.dart';
-import 'package:unired/shared/themes/app_theme.dart';
+import 'package:unired/core/datos/remoto/cliente_api.dart';
+import 'package:unired/core/dominio/datos_api.dart';
+import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
+import 'package:unired/models/administracion/widgets/editor_publicacion.dart';
+import 'package:unired/models/autenticacion/models/usuario_aplicacion.dart';
+import 'package:unired/models/tutorias/widgets/editor_temario.dart';
+import 'package:unired/models/tutorias/widgets/editor_leccion.dart';
+import 'package:unired/shared/temas/tema_aplicacion.dart';
 import 'support/test_adapter.dart';
 
 void main() {
-  late AppService service;
+  late AplicacionController service;
   late TestAdapter adapter;
   late Json course;
   setUp(() {
@@ -61,8 +61,10 @@ void main() {
       return TestReply({'items': [], 'total': 0, 'page': 1, 'limit': 20});
     });
     service =
-        AppService(client: ApiClient(dio: Dio()..httpClientAdapter = adapter))
-          ..currentUser = const AppUser(
+        AplicacionController(
+            client: ClienteApi(dio: Dio()..httpClientAdapter = adapter),
+          )
+          ..currentUser = const UsuarioAplicacion(
             id: '2',
             name: 'Daniela Rivas',
             email: 'daniela@example.test',
@@ -72,7 +74,7 @@ void main() {
           ..areas = [
             {'id': 1, 'nombre': 'Programación'},
           ];
-    AppService.replaceInstanceForTesting(service);
+    AplicacionController.replaceInstanceForTesting(service);
   });
   tearDown(() => service.dispose());
 
@@ -83,7 +85,7 @@ void main() {
     addTearDown(t.view.resetDevicePixelRatio);
     await t.pumpWidget(
       MaterialApp(
-        theme: AppTheme.light,
+        theme: TemaAplicacion.light,
         home: Scaffold(body: child),
       ),
     );
@@ -107,7 +109,7 @@ void main() {
     testWidgets(
       'creación guiada, sección y lectura con datos reales a $width',
       (t) async {
-        await open(t, const PublicationEditor(isTutorial: true), width);
+        await open(t, const EditorPublicacion(isTutorial: true), width);
         await click(t, 'Siguiente');
         expect(find.text('Completa este campo.'), findsAtLeastNWidgets(1));
         expect(
@@ -164,7 +166,7 @@ void main() {
         );
         await click(t, 'Guardar lección');
         expect(find.text('1. Preparar las herramientas'), findsOneWidget);
-        expect(find.byType(CourseLessonEditor), findsNothing);
+        expect(find.byType(EditorLeccion), findsNothing);
         final request = adapter.requests.singleWhere(
           (r) => r.method == 'POST' && r.path == '/me/courses/9/lessons',
         );
@@ -215,14 +217,14 @@ void main() {
       await open(
         t,
         SingleChildScrollView(
-          child: CourseCurriculumEditor(course: course, reload: () {}),
+          child: EditorTemario(course: course, reload: () {}),
         ),
         1100,
       );
-      expect(find.byType(CourseLessonEditor), findsNothing);
+      expect(find.byType(EditorLeccion), findsNothing);
       await t.tap(find.byTooltip('Editar lección').first);
       await t.pumpAndSettle();
-      expect(find.byType(CourseLessonEditor), findsOneWidget);
+      expect(find.byType(EditorLeccion), findsOneWidget);
       expect(find.text('componentes.mp4'), findsOneWidget);
       expect(find.text('Apuntes de componentes.pdf'), findsOneWidget);
       await click(t, 'Guardar lección');

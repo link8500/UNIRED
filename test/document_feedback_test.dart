@@ -2,18 +2,18 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:unired/core/network/api_client.dart';
-import 'package:unired/core/network/api_data.dart';
-import 'package:unired/core/services/app_service.dart';
-import 'package:unired/models/auth/models/app_user.dart';
-import 'package:unired/models/market/widgets/seller_contact_panel.dart';
-import 'package:unired/models/profile/widgets/profile_editor.dart';
-import 'package:unired/models/profile/widgets/profile_identity_card.dart';
-import 'package:unired/shared/themes/app_theme.dart';
+import 'package:unired/core/datos/remoto/cliente_api.dart';
+import 'package:unired/core/dominio/datos_api.dart';
+import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
+import 'package:unired/models/autenticacion/models/usuario_aplicacion.dart';
+import 'package:unired/models/market/widgets/contacto_vendedor.dart';
+import 'package:unired/models/perfil/widgets/editor_perfil.dart';
+import 'package:unired/models/perfil/widgets/tarjeta_identidad_perfil.dart';
+import 'package:unired/shared/temas/tema_aplicacion.dart';
 import 'support/test_adapter.dart';
 
-class DraftService extends AppService {
-  DraftService(ApiClient client) : super(client: client);
+class DraftService extends AplicacionController {
+  DraftService(ClienteApi client) : super(client: client);
   @override
   Future<Json?> pickAndUpload(
     String purpose, {
@@ -24,9 +24,9 @@ class DraftService extends AppService {
 }
 
 void main() {
-  late AppService service;
+  late AplicacionController service;
   late TestAdapter adapter;
-  const user = AppUser(
+  const user = UsuarioAplicacion(
     id: '1',
     name: 'Sofía Martínez',
     email: 'sofia@example.test',
@@ -35,9 +35,9 @@ void main() {
   );
   setUp(() {
     adapter = TestAdapter((_) async => TestReply({}));
-    service = DraftService(ApiClient(dio: Dio()..httpClientAdapter = adapter))
+    service = DraftService(ClienteApi(dio: Dio()..httpClientAdapter = adapter))
       ..currentUser = user;
-    AppService.replaceInstanceForTesting(service);
+    AplicacionController.replaceInstanceForTesting(service);
   });
   tearDown(() => service.dispose());
 
@@ -48,7 +48,7 @@ void main() {
     addTearDown(t.view.resetDevicePixelRatio);
     await t.pumpWidget(
       MaterialApp(
-        theme: AppTheme.light,
+        theme: TemaAplicacion.light,
         home: Scaffold(body: SingleChildScrollView(child: child)),
       ),
     );
@@ -73,13 +73,13 @@ void main() {
       });
       service.api.dio.httpClientAdapter = adapter;
       var saved = 0;
-      await open(t, ProfileEditor(user: user, onSaved: () => saved++));
+      await open(t, EditorPerfil(user: user, onSaved: () => saved++));
       await t.tap(find.byTooltip('Cambiar avatar'));
       await t.pumpAndSettle();
       await t.tap(find.text('Cambiar portada'));
       await t.pumpAndSettle();
-      final preview = t.widget<ProfileIdentityCard>(
-        find.byType(ProfileIdentityCard),
+      final preview = t.widget<TarjetaIdentidadPerfil>(
+        find.byType(TarjetaIdentidadPerfil),
       );
       expect(preview.avatarPreviewId, '90');
       expect(preview.coverPreviewId, '91');
@@ -99,7 +99,7 @@ void main() {
   testWidgets(
     'descartar restaura el formulario y las imágenes sin cambiar el perfil',
     (t) async {
-      await open(t, ProfileEditor(user: user, onSaved: () {}));
+      await open(t, EditorPerfil(user: user, onSaved: () {}));
       await t.tap(find.byTooltip('Cambiar avatar'));
       await t.pumpAndSettle();
       await t.enterText(
@@ -109,8 +109,8 @@ void main() {
       await t.ensureVisible(find.text('Descartar cambios'));
       await t.tap(find.text('Descartar cambios'));
       await t.pumpAndSettle();
-      final preview = t.widget<ProfileIdentityCard>(
-        find.byType(ProfileIdentityCard),
+      final preview = t.widget<TarjetaIdentidadPerfil>(
+        find.byType(TarjetaIdentidadPerfil),
       );
       expect(preview.avatarPreviewId, isNull);
       expect(
@@ -143,7 +143,7 @@ void main() {
         return TestReply({});
       });
       service.api.dio.httpClientAdapter = adapter;
-      await open(t, const SellerContactPanel(listingId: '4'));
+      await open(t, const ContactoVendedor(listingId: '4'));
       expect(adapter.requests.where((r) => r.method == 'POST'), isEmpty);
       await t.enterText(find.byType(TextField), 'Hola, ¿incluye el cargador?');
       expect(adapter.requests.where((r) => r.method == 'POST'), isEmpty);
@@ -158,7 +158,7 @@ void main() {
       expect(find.text('Ir a la conversación'), findsOneWidget);
       expect(find.text('Enviar consulta'), findsNothing);
       await t.pumpWidget(const SizedBox());
-      await open(t, const SellerContactPanel(listingId: '4'));
+      await open(t, const ContactoVendedor(listingId: '4'));
       expect(find.text('Ir a la conversación'), findsOneWidget);
       expect(adapter.requests.where((r) => r.method == 'POST'), hasLength(1));
     },

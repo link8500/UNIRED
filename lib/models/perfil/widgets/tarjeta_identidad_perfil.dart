@@ -1,0 +1,155 @@
+// Archivo: lib/models/perfil/widgets/tarjeta_identidad_perfil.dart
+// Presenta la identidad, el avatar y la información principal del usuario.
+
+import 'package:flutter/material.dart';
+import 'package:unired/models/autenticacion/models/usuario_aplicacion.dart';
+import 'package:unired/shared/temas/colores_aplicacion.dart';
+import 'package:unired/shared/widgets/componentes_administracion.dart';
+import 'package:unired/shared/widgets/widgets_api.dart';
+import 'package:unired/shared/widgets/portada_comunidad.dart';
+
+class TarjetaIdentidadPerfil extends StatelessWidget {
+  const TarjetaIdentidadPerfil({
+    super.key,
+    required this.user,
+    this.onEdit,
+    this.onAvatar,
+    this.onCover,
+    this.avatarPreviewId,
+    this.coverPreviewId,
+  });
+
+  final UsuarioAplicacion user;
+  final VoidCallback? onEdit, onAvatar, onCover;
+  final String? avatarPreviewId, coverPreviewId;
+
+  @override
+  Widget build(BuildContext context) => SuperficieAdmin(
+    padding: EdgeInsets.zero,
+    child: LayoutBuilder(
+      builder: (context, size) {
+        final compact = size.maxWidth < 530;
+        final coverHeight = compact ? 110.0 : 164.0;
+        final identity = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(user.name, style: Theme.of(context).textTheme.headlineSmall),
+            const SizedBox(height: 4),
+            Text(
+              user.isAdministrator
+                  ? 'Cuenta administrativa'
+                  : user.canModerate
+                  ? 'Moderación de la comunidad'
+                  : user.canReview
+                  ? 'Revisión de tutores'
+                  : 'Miembro de UniRed',
+              style: const TextStyle(color: ColoresAplicacion.muted),
+            ),
+            if (!user.isAdministrator && user.university.isNotEmpty)
+              Text(user.university),
+          ],
+        );
+        final edit = OutlinedButton.icon(
+          onPressed: onEdit,
+          icon: const Icon(Icons.edit_outlined, size: 18),
+          label: const Text('Editar perfil'),
+        );
+        return Stack(
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(10),
+                  ),
+                  child: SizedBox(
+                    height: coverHeight,
+                    child: ImagenApi(
+                      fileId: coverPreviewId ?? user.bannerId,
+                      fallback: const PortadaComunidad(),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 47, 24, 24),
+                  child: compact
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            identity,
+                            if (onEdit != null) ...[
+                              const SizedBox(height: 14),
+                              edit,
+                            ],
+                          ],
+                        )
+                      : Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(child: identity),
+                            if (onEdit != null) ...[
+                              const SizedBox(width: 14),
+                              edit,
+                            ],
+                          ],
+                        ),
+                ),
+              ],
+            ),
+            if (onCover != null)
+              Positioned(
+                top: 12,
+                right: 12,
+                child: FilledButton.tonalIcon(
+                  onPressed: onCover,
+                  icon: const Icon(Icons.image_outlined, size: 17),
+                  label: const Text('Cambiar portada'),
+                ),
+              ),
+            Positioned(
+              top: coverHeight - 42,
+              left: 22,
+              child: DecoratedBox(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Stack(
+                    children: [
+                      AvatarAdmin(
+                        name: user.name,
+                        fileId: avatarPreviewId ?? user.avatarId,
+                        radius: 37,
+                      ),
+                      if (onAvatar != null)
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: IconButton.filledTonal(
+                            tooltip: 'Cambiar avatar',
+                            onPressed: onAvatar,
+                            constraints: const BoxConstraints.tightFor(
+                              width: 34,
+                              height: 34,
+                            ),
+                            padding: EdgeInsets.zero,
+                            icon: const Icon(
+                              Icons.photo_camera_outlined,
+                              size: 17,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    ),
+  );
+}

@@ -2,17 +2,17 @@ import 'package:dio/dio.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:unired/core/network/api_client.dart';
-import 'package:unired/core/services/app_service.dart';
-import 'package:unired/models/tutorials/widgets/course_classroom.dart';
-import 'package:unired/shared/themes/app_theme.dart';
+import 'package:unired/core/datos/remoto/cliente_api.dart';
+import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
+import 'package:unired/models/tutorias/widgets/aula_curso.dart';
+import 'package:unired/shared/temas/tema_aplicacion.dart';
 import 'support/test_adapter.dart';
 
 void main() {
-  late AppService service;
+  late AplicacionController service;
   setUp(() {
-    service = AppService(
-      client: ApiClient(
+    service = AplicacionController(
+      client: ClienteApi(
         dio: Dio()
           ..httpClientAdapter = TestAdapter((r) async {
             if (r.path == '/courses/9/lessons/1') {
@@ -33,7 +33,7 @@ void main() {
           }),
       ),
     );
-    AppService.replaceInstanceForTesting(service);
+    AplicacionController.replaceInstanceForTesting(service);
   });
   tearDown(() => service.dispose());
 
@@ -51,8 +51,8 @@ void main() {
         addTearDown(t.view.resetDevicePixelRatio);
         await t.pumpWidget(
           MaterialApp(
-            theme: AppTheme.light,
-            home: CourseClassroom(
+            theme: TemaAplicacion.light,
+            home: AulaCurso(
               owner: true,
               course: {
                 'id': '9',

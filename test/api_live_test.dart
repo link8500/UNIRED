@@ -3,10 +3,10 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:uuid/uuid.dart';
-import 'package:unired/core/constants/publication_status.dart';
-import 'package:unired/core/network/api_client.dart';
-import 'package:unired/core/network/api_data.dart';
-import 'package:unired/core/services/app_service.dart';
+import 'package:unired/core/constantes/estado_publicacion.dart';
+import 'package:unired/core/datos/remoto/cliente_api.dart';
+import 'package:unired/core/dominio/datos_api.dart';
+import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
 
 /// Solo se ejecuta mediante el contenedor temporal del harness; nunca lee .env.
 void main() {
@@ -18,9 +18,9 @@ void main() {
         jsonDecode(await File(fixturePath!).readAsString()),
       );
       final base = textValue(fixture['baseUrl']);
-      final stores = <AppService>[];
-      AppService create() {
-        final service = AppService(client: ApiClient(baseUrl: base));
+      final stores = <AplicacionController>[];
+      AplicacionController create() {
+        final service = AplicacionController(client: ClienteApi(baseUrl: base));
         stores.add(service);
         return service;
       }
@@ -44,7 +44,7 @@ void main() {
         throw StateError('No llegó la verificación de prueba.');
       }
 
-      Future<AppService> account(
+      Future<AplicacionController> account(
         String name,
         String email,
         String password,
@@ -62,7 +62,7 @@ void main() {
       }
 
       Future<Json> upload(
-        AppService service,
+        AplicacionController service,
         String purpose,
         String path,
       ) async => jsonObject(
@@ -136,7 +136,7 @@ void main() {
         );
         await tutor.setProductStatus(
           tutor.productFromJson(listing),
-          PublicationStatus.published,
+          EstadoPublicacion.published,
         );
         await student.initialize(force: true);
         final product = student.publishedProducts.first;
@@ -256,7 +256,7 @@ void main() {
         );
         await tutor.setTutorialStatus(
           tutor.tutorialFromJson(course),
-          PublicationStatus.published,
+          EstadoPublicacion.published,
         );
         await student.initialize(force: true);
         final enrollment = await student.startTutorial(
@@ -321,7 +321,7 @@ void main() {
         );
         await tutor.setTutorialStatus(
           tutor.tutorialFromJson(live),
-          PublicationStatus.published,
+          EstadoPublicacion.published,
         );
         final liveDetails = await student.api.object('/courses/$liveId');
         final liveEnrollment = await student.startTutorial(

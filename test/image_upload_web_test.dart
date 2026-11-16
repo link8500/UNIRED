@@ -3,19 +3,19 @@ import 'dart:ui' as ui;
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:unired/core/network/api_client.dart';
-import 'package:unired/core/network/api_data.dart';
-import 'package:unired/core/services/app_service.dart';
-import 'package:unired/models/auth/models/app_user.dart';
-import 'package:unired/shared/themes/app_theme.dart';
-import 'package:unired/shared/widgets/publication_image_editor.dart';
+import 'package:unired/core/datos/remoto/cliente_api.dart';
+import 'package:unired/core/dominio/datos_api.dart';
+import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
+import 'package:unired/models/autenticacion/models/usuario_aplicacion.dart';
+import 'package:unired/shared/temas/tema_aplicacion.dart';
+import 'package:unired/shared/widgets/editor_imagen_publicacion.dart';
 import 'support/test_adapter.dart';
 
 /// Ejecutable en VM y Chrome. --web añade NestJS y PostgreSQL reales con
 /// credenciales efímeras. La red real usa runAsync, fuera del reloj simulado.
 void main() {
   const live = bool.fromEnvironment('UNIRED_LIVE_UPLOAD');
-  late AppService service;
+  late AplicacionController service;
   late TestAdapter adapter;
   late Uint8List photo;
   Future<Uint8List?>? editing;
@@ -41,15 +41,17 @@ void main() {
       }, status: 201),
     );
     service =
-        AppService(client: ApiClient(dio: Dio()..httpClientAdapter = adapter))
-          ..currentUser = const AppUser(
+        AplicacionController(
+            client: ClienteApi(dio: Dio()..httpClientAdapter = adapter),
+          )
+          ..currentUser = const UsuarioAplicacion(
             id: '1',
             name: 'Prueba',
             email: 'test@example.test',
             university: '',
             roles: ['usuario'],
           );
-    AppService.replaceInstanceForTesting(service);
+    AplicacionController.replaceInstanceForTesting(service);
   });
   tearDown(() => service.dispose());
 
@@ -60,10 +62,10 @@ void main() {
     addTearDown(t.view.resetDevicePixelRatio);
     if (realApi) {
       service.dispose();
-      service = AppService(
-        client: ApiClient(baseUrl: const String.fromEnvironment('baseUrl')),
+      service = AplicacionController(
+        client: ClienteApi(baseUrl: const String.fromEnvironment('baseUrl')),
       );
-      AppService.replaceInstanceForTesting(service);
+      AplicacionController.replaceInstanceForTesting(service);
       await t.runAsync(
         () => service.signInAdmin(
           username: const String.fromEnvironment('adminEmail'),
@@ -73,7 +75,7 @@ void main() {
     }
     await t.pumpWidget(
       MaterialApp(
-        theme: AppTheme.light,
+        theme: TemaAplicacion.light,
         home: Scaffold(
           body: Builder(
             builder: (context) => TextButton(

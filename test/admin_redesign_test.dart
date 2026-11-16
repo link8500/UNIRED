@@ -5,16 +5,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:unired/core/network/api_client.dart';
-import 'package:unired/core/network/api_data.dart';
-import 'package:unired/core/services/app_service.dart';
-import 'package:unired/core/utils/app_navigator.dart';
-import 'package:unired/models/auth/models/app_user.dart';
-import 'package:unired/models/profile/widgets/profile_data_form.dart';
-import 'package:unired/models/admin/widgets/publication_editor.dart';
-import 'package:unired/shared/themes/app_theme.dart';
-import 'package:unired/shared/widgets/admin_components.dart';
-import 'package:unired/shared/widgets/api_widgets.dart';
+import 'package:unired/core/datos/remoto/cliente_api.dart';
+import 'package:unired/core/dominio/datos_api.dart';
+import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
+import 'package:unired/models/aplicacion/navegacion/navegador_aplicacion.dart';
+import 'package:unired/models/autenticacion/models/usuario_aplicacion.dart';
+import 'package:unired/models/perfil/widgets/formulario_perfil.dart';
+import 'package:unired/models/administracion/widgets/editor_publicacion.dart';
+import 'package:unired/shared/temas/tema_aplicacion.dart';
+import 'package:unired/shared/widgets/componentes_administracion.dart';
+import 'package:unired/shared/widgets/widgets_api.dart';
 import 'support/test_adapter.dart';
 
 /// Datos ilustrativos exclusivos de pruebas; jamás se insertan en la aplicación.
@@ -35,7 +35,7 @@ void main() {
       await icons.load();
     }
   });
-  late AppService service;
+  late AplicacionController service;
   late TestAdapter adapter;
   final account = <String, Object?>{
     'id': 2,
@@ -126,10 +126,10 @@ void main() {
               },
       ),
     );
-    service = AppService(
-      client: ApiClient(dio: Dio()..httpClientAdapter = adapter),
+    service = AplicacionController(
+      client: ClienteApi(dio: Dio()..httpClientAdapter = adapter),
     );
-    service.currentUser = const AppUser(
+    service.currentUser = const UsuarioAplicacion(
       id: '1',
       name: 'Alex Bryan',
       email: 'admin@example.test',
@@ -203,7 +203,7 @@ void main() {
           },
       ],
     };
-    AppService.replaceInstanceForTesting(service);
+    AplicacionController.replaceInstanceForTesting(service);
   });
   tearDown(() => service.dispose());
 
@@ -218,10 +218,10 @@ void main() {
         key: key,
         child: MaterialApp(
           debugShowCheckedModeBanner: false,
-          theme: AppTheme.light,
+          theme: TemaAplicacion.light,
           initialRoute: route,
-          navigatorObservers: [AppNavigator.observer],
-          onGenerateRoute: AppNavigator.onGenerateRoute,
+          navigatorObservers: [NavegadorAplicacion.observer],
+          onGenerateRoute: NavegadorAplicacion.onGenerateRoute,
         ),
       ),
     );
@@ -319,7 +319,9 @@ void main() {
       ),
     );
     service =
-        AppService(client: ApiClient(dio: Dio()..httpClientAdapter = adapter))
+        AplicacionController(
+            client: ClienteApi(dio: Dio()..httpClientAdapter = adapter),
+          )
           ..currentUser = current
           ..initialized = true
           ..categories = [
@@ -328,7 +330,7 @@ void main() {
           ..areas = [
             {'id': 1, 'nombre': 'Software'},
           ];
-    AppService.replaceInstanceForTesting(service);
+    AplicacionController.replaceInstanceForTesting(service);
   }
 
   for (final size in [const Size(1440, 1000), const Size(390, 844)]) {
@@ -337,7 +339,7 @@ void main() {
         installPublicationFixture();
         final key = await open(
           tester,
-          '${tutorial ? AppRoutes.course : AppRoutes.listing}?id=7',
+          '${tutorial ? RutasAplicacion.course : RutasAplicacion.listing}?id=7',
           size,
         );
         await tester.runAsync(
@@ -365,7 +367,7 @@ void main() {
       installPublicationFixture();
       await open(
         tester,
-        AppRoutes.publication(
+        RutasAplicacion.publication(
           tutorial: true,
           admin: true,
           id: '7',
@@ -378,10 +380,10 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('Estudio de tutorías'), findsOneWidget);
-      final button = tester.widget<ApiActionButton>(
+      final button = tester.widget<BotonAccionApi>(
         find.ancestor(
           of: find.text('Guardar cambios'),
-          matching: find.byType(ApiActionButton),
+          matching: find.byType(BotonAccionApi),
         ),
       );
       await tester.runAsync(button.action);
@@ -408,13 +410,13 @@ void main() {
     tester,
   ) async {
     installPublicationFixture();
-    final route = AppRoutes.publication(tutorial: false, admin: false);
+    final route = RutasAplicacion.publication(tutorial: false, admin: false);
     await open(tester, route, const Size(1440, 1000));
     await tester.enterText(
       find.byKey(const ValueKey('publication-titulo')),
       'Mi primer borrador',
     );
-    tester.widget<PublicationEditor>(find.byType(PublicationEditor)).onSaved!(
+    tester.widget<EditorPublicacion>(find.byType(EditorPublicacion)).onSaved!(
       '7',
       'presentation',
     );
@@ -423,7 +425,7 @@ void main() {
       () => Future<void>.delayed(const Duration(milliseconds: 10)),
     );
     await tester.pumpAndSettle();
-    AppNavigator.go(tester.element(find.byType(Scaffold).first), route);
+    NavegadorAplicacion.go(tester.element(find.byType(Scaffold).first), route);
     await tester.pumpAndSettle();
     final field = tester.widget<TextFormField>(
       find.byKey(const ValueKey('publication-titulo')),
@@ -432,7 +434,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
   test('separa estudios, residencia y empleo al leer /me', () {
-    final user = AppUser.fromJson(account);
+    final user = UsuarioAplicacion.fromJson(account);
     expect(user.university, 'UNAN-Managua');
     expect(user.city, 'Managua');
     expect(user.major, 'Ingeniería en Sistemas');
@@ -445,13 +447,13 @@ void main() {
     testWidgets('dashboard compacto sin overflow ${size.width}', (
       tester,
     ) async {
-      final key = await open(tester, AppRoutes.dashboard, size);
+      final key = await open(tester, RutasAplicacion.dashboard, size);
       expect(find.text('Usuarios totales'), findsOneWidget);
       expect(find.text('Actividad de la comunidad'), findsOneWidget);
       final card = find
           .ancestor(
             of: find.text('Usuarios totales'),
-            matching: find.byType(AdminSurface),
+            matching: find.byType(SuperficieAdmin),
           )
           .first;
       await preview(
@@ -467,7 +469,11 @@ void main() {
     'ficha administrativa incluye estudios y contenido sin recargas accidentales',
     (tester) async {
       await tester.runAsync(service.loadAdminUsers);
-      final key = await open(tester, AppRoutes.user, const Size(1440, 1000));
+      final key = await open(
+        tester,
+        RutasAplicacion.user,
+        const Size(1440, 1000),
+      );
       await tester.tap(find.text('Fernando Herrera'));
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 10)),
@@ -491,10 +497,10 @@ void main() {
     Json? sent;
     await tester.pumpWidget(
       MaterialApp(
-        theme: AppTheme.light,
+        theme: TemaAplicacion.light,
         home: Scaffold(
           body: SingleChildScrollView(
-            child: ProfileDataForm(
+            child: FormularioPerfil(
               initial: const {'nombre': 'Administrador', 'ciudad': 'León'},
               administrator: true,
               onSave: (data) async => sent = data,
@@ -515,28 +521,28 @@ void main() {
     expect(tester.takeException(), isNull);
   });
   for (final route in [
-    AppRoutes.adminMarket,
-    AppRoutes.adminTutorials,
-    AppRoutes.adminReports,
-    AppRoutes.adminAudit,
-    AppRoutes.adminCatalogs,
-    AppRoutes.adminProfile,
-    AppRoutes.settings,
-    AppRoutes.adminMessages,
-    AppRoutes.adminOwnMarket,
-    AppRoutes.adminOwnCourses,
-    AppRoutes.adminApplications,
-    AppRoutes.adminTutors,
-    AppRoutes.adminExpiringTutors,
-    AppRoutes.adminTutorHistory,
-    AppRoutes.adminSessions,
-    AppRoutes.adminParticipation,
-    AppRoutes.adminReviews,
-    AppRoutes.adminTrainingAreas,
-    AppRoutes.adminMarketUpdates,
-    AppRoutes.adminMarketCategories,
-    AppRoutes.adminSupport,
-    '${AppRoutes.user}?view=access',
+    RutasAplicacion.adminMarket,
+    RutasAplicacion.adminTutorials,
+    RutasAplicacion.adminReports,
+    RutasAplicacion.adminAudit,
+    RutasAplicacion.adminCatalogs,
+    RutasAplicacion.adminProfile,
+    RutasAplicacion.settings,
+    RutasAplicacion.adminMessages,
+    RutasAplicacion.adminOwnMarket,
+    RutasAplicacion.adminOwnCourses,
+    RutasAplicacion.adminApplications,
+    RutasAplicacion.adminTutors,
+    RutasAplicacion.adminExpiringTutors,
+    RutasAplicacion.adminTutorHistory,
+    RutasAplicacion.adminSessions,
+    RutasAplicacion.adminParticipation,
+    RutasAplicacion.adminReviews,
+    RutasAplicacion.adminTrainingAreas,
+    RutasAplicacion.adminMarketUpdates,
+    RutasAplicacion.adminMarketCategories,
+    RutasAplicacion.adminSupport,
+    '${RutasAplicacion.user}?view=access',
   ]) {
     testWidgets('módulo administrativo adaptable sin desbordes $route', (
       tester,
@@ -562,7 +568,7 @@ void main() {
         ];
         final key = await open(
           tester,
-          AppRoutes.publication(tutorial: tutorial, admin: false),
+          RutasAplicacion.publication(tutorial: tutorial, admin: false),
           size,
         );
         expect(
@@ -634,7 +640,7 @@ void main() {
     installPublicationFixture();
     await open(
       tester,
-      AppRoutes.publication(tutorial: true, admin: false),
+      RutasAplicacion.publication(tutorial: true, admin: false),
       const Size(1440, 1000),
     );
     await tester.tap(find.text('Contenido y alumnos'));
@@ -687,9 +693,9 @@ void main() {
     ];
     await tester.pumpWidget(
       MaterialApp(
-        theme: AppTheme.light,
+        theme: TemaAplicacion.light,
         home: Scaffold(
-          body: PublicationEditor(
+          body: EditorPublicacion(
             isTutorial: true,
             initial: const {
               'id': '4',
@@ -740,9 +746,9 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       await tester.pumpWidget(
         MaterialApp(
-          theme: AppTheme.light,
+          theme: TemaAplicacion.light,
           home: Scaffold(
-            body: PublicationEditor(
+            body: EditorPublicacion(
               isTutorial: tutorial,
               startWithReview: true,
               initial: {
@@ -767,15 +773,15 @@ void main() {
       );
       final button = find.ancestor(
         of: find.text('Confirmar y publicar'),
-        matching: find.byType(ApiActionButton),
+        matching: find.byType(BotonAccionApi),
       );
-      expect(tester.widget<ApiActionButton>(button).enabled, isFalse);
+      expect(tester.widget<BotonAccionApi>(button).enabled, isFalse);
       await tester.ensureVisible(
         find.byKey(const ValueKey('publication-confirm')),
       );
       await tester.tap(find.byKey(const ValueKey('publication-confirm')));
       await tester.pumpAndSettle();
-      expect(tester.widget<ApiActionButton>(button).enabled, isTrue);
+      expect(tester.widget<BotonAccionApi>(button).enabled, isTrue);
       expect(
         adapter.requests.where(
           (r) => r.path.endsWith('/publish') || r.path.endsWith('/state'),
@@ -786,9 +792,9 @@ void main() {
     });
   }
   for (final route in [
-    AppRoutes.login,
-    AppRoutes.register,
-    AppRoutes.adminLogin,
+    RutasAplicacion.login,
+    RutasAplicacion.register,
+    RutasAplicacion.adminLogin,
   ]) {
     testWidgets('acceso permite regresar al inicio $route', (tester) async {
       await open(tester, route, const Size(390, 844));

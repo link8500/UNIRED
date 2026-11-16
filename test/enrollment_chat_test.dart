@@ -2,19 +2,19 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:unired/core/network/api_client.dart';
-import 'package:unired/core/network/api_data.dart';
-import 'package:unired/core/services/app_service.dart';
-import 'package:unired/models/auth/models/app_user.dart';
-import 'package:unired/models/messaging/views/messages_page.dart';
-import 'package:unired/models/messaging/widgets/conversation_subject.dart';
-import 'package:unired/models/tutorials/views/course_page.dart';
-import 'package:unired/models/tutorials/widgets/course_management.dart';
-import 'package:unired/shared/themes/app_theme.dart';
+import 'package:unired/core/datos/remoto/cliente_api.dart';
+import 'package:unired/core/dominio/datos_api.dart';
+import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
+import 'package:unired/models/autenticacion/models/usuario_aplicacion.dart';
+import 'package:unired/models/mensajeria/views/mensajes_view.dart';
+import 'package:unired/models/mensajeria/widgets/asunto_conversacion.dart';
+import 'package:unired/models/tutorias/views/curso_view.dart';
+import 'package:unired/models/tutorias/widgets/gestion_curso.dart';
+import 'package:unired/shared/temas/tema_aplicacion.dart';
 import 'support/test_adapter.dart';
 
 void main() {
-  late AppService service;
+  late AplicacionController service;
   late TestAdapter adapter;
   String? state;
   final course = <String, Object?>{
@@ -113,15 +113,17 @@ void main() {
       return TestReply({'items': [], 'total': 0, 'page': 1, 'limit': 20});
     });
     service =
-        AppService(client: ApiClient(dio: Dio()..httpClientAdapter = adapter))
-          ..currentUser = const AppUser(
+        AplicacionController(
+            client: ClienteApi(dio: Dio()..httpClientAdapter = adapter),
+          )
+          ..currentUser = const UsuarioAplicacion(
             id: '3',
             name: 'Sofía Martínez',
             email: 'sofia@example.test',
             university: '',
             roles: ['usuario'],
           );
-    AppService.replaceInstanceForTesting(service);
+    AplicacionController.replaceInstanceForTesting(service);
   });
   tearDown(() => service.dispose());
 
@@ -130,14 +132,14 @@ void main() {
     t.view.devicePixelRatio = 1;
     addTearDown(t.view.resetPhysicalSize);
     addTearDown(t.view.resetDevicePixelRatio);
-    await t.pumpWidget(MaterialApp(theme: AppTheme.light, home: child));
+    await t.pumpWidget(MaterialApp(theme: TemaAplicacion.light, home: child));
     await t.pumpAndSettle();
   }
 
   testWidgets(
     'una tutoría gratuita requiere solicitud y la aceptación habilita el aula',
     (t) async {
-      await open(t, const CoursePage(id: '9'), 1100);
+      await open(t, const CursoView(id: '9'), 1100);
       await t.tap(find.text('Solicitar acceso'));
       await t.pumpAndSettle();
       expect(find.text('Solicitud enviada'), findsOneWidget);
@@ -171,10 +173,10 @@ void main() {
         t,
         Scaffold(
           body: SingleChildScrollView(
-            child: CourseManagement(
+            child: GestionCurso(
               course: course,
               reload: () => externalReloads++,
-              initialTab: CourseManagementTab.students,
+              initialTab: PestanaGestionCurso.students,
             ),
           ),
         ),
@@ -201,7 +203,7 @@ void main() {
     testWidgets(
       'el chat identifica el artículo y muestra su descripción a $width',
       (t) async {
-        await open(t, const MessagesPage(id: '10'), width);
+        await open(t, const MensajesView(id: '10'), width);
         expect(find.text('Omeprazol 20 mg'), findsAtLeastNWidgets(1));
         expect(
           find.text(
@@ -210,8 +212,8 @@ void main() {
           findsAtLeastNWidgets(1),
         );
         expect(find.text('administrador'), findsNothing);
-        final images = t.widgetList<ChatSubjectImage>(
-          find.byType(ChatSubjectImage),
+        final images = t.widgetList<ImagenAsuntoChat>(
+          find.byType(ImagenAsuntoChat),
         );
         expect(
           images.any((image) => image.row?['recursoImagenId'] == '71'),
@@ -225,7 +227,7 @@ void main() {
           expect(find.byTooltip('Enviar mensaje'), findsNothing);
           expect(find.text('Saluda y comienza la conversación.'), findsNothing);
           final details = find.byWidgetPredicate(
-            (w) => w is ChatSubjectPreview && w.detailed,
+            (w) => w is VistaPreviaAsuntoChat && w.detailed,
           );
           expect(t.getSize(details).height, greaterThan(300));
         } else {
@@ -246,7 +248,7 @@ void main() {
   testWidgets('la bandeja sin selección no muestra información vacía', (
     t,
   ) async {
-    await open(t, const MessagesPage(), 1440);
+    await open(t, const MensajesView(), 1440);
     expect(find.text('Tus conversaciones'), findsOneWidget);
     expect(find.text('Acerca de esta conversación'), findsNothing);
     expect(t.takeException(), isNull);

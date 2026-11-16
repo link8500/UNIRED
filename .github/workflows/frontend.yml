@@ -40,6 +40,9 @@ jobs:
       - name: Analizar el código
         run: flutter analyze --no-pub
 
+      - name: Comprobar las dependencias de la arquitectura
+        run: dart run tool/verificar_arquitectura.dart
+
       - name: Ejecutar las pruebas
         run: flutter test --no-pub
 

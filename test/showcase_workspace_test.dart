@@ -1,17 +1,17 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:unired/core/network/api_client.dart';
-import 'package:unired/core/services/app_service.dart';
-import 'package:unired/models/auth/models/app_user.dart';
-import 'package:unired/models/admin/views/conversation_review_page.dart';
-import 'package:unired/models/tutorials/widgets/course_classroom.dart';
-import 'package:unired/models/tutorials/widgets/lesson_resources_button.dart';
-import 'package:unired/shared/themes/app_theme.dart';
+import 'package:unired/core/datos/remoto/cliente_api.dart';
+import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
+import 'package:unired/models/autenticacion/models/usuario_aplicacion.dart';
+import 'package:unired/models/administracion/views/revision_conversacion_view.dart';
+import 'package:unired/models/tutorias/widgets/aula_curso.dart';
+import 'package:unired/models/tutorias/widgets/boton_recursos_leccion.dart';
+import 'package:unired/shared/temas/tema_aplicacion.dart';
 import 'support/test_adapter.dart';
 
 void main() {
-  late AppService service;
+  late AplicacionController service;
   late TestAdapter adapter;
   final chat = {
     'id': '10',
@@ -62,15 +62,17 @@ void main() {
       return TestReply({'items': [], 'total': 0, 'page': 1, 'limit': 20});
     });
     service =
-        AppService(client: ApiClient(dio: Dio()..httpClientAdapter = adapter))
-          ..currentUser = const AppUser(
+        AplicacionController(
+            client: ClienteApi(dio: Dio()..httpClientAdapter = adapter),
+          )
+          ..currentUser = const UsuarioAplicacion(
             id: '3',
             name: 'Administrador',
             email: 'admin@example.test',
             university: '',
             roles: ['administrador'],
           );
-    AppService.replaceInstanceForTesting(service);
+    AplicacionController.replaceInstanceForTesting(service);
   });
   tearDown(() => service.dispose());
   Future<void> open(WidgetTester t, Widget child, double width) async {
@@ -78,7 +80,7 @@ void main() {
     t.view.devicePixelRatio = 1;
     addTearDown(t.view.resetPhysicalSize);
     addTearDown(t.view.resetDevicePixelRatio);
-    await t.pumpWidget(MaterialApp(theme: AppTheme.light, home: child));
+    await t.pumpWidget(MaterialApp(theme: TemaAplicacion.light, home: child));
     await t.pumpAndSettle();
   }
 
@@ -89,7 +91,7 @@ void main() {
         t,
         const Scaffold(
           body: Center(
-            child: LessonResourcesButton(courseId: '9', lessonId: '2'),
+            child: BotonRecursosLeccion(courseId: '9', lessonId: '2'),
           ),
         ),
         1100,
@@ -121,7 +123,7 @@ void main() {
     testWidgets('revisión administrativa solo consulta y cabe a $width', (
       t,
     ) async {
-      await open(t, const ConversationReviewPage(kind: 'tutoria'), width);
+      await open(t, const RevisionConversacionView(kind: 'tutoria'), width);
       await t.tap(find.text('Universidad Angular'));
       await t.pumpAndSettle();
       expect(find.text('¿Dónde están los apuntes?'), findsOneWidget);
@@ -140,7 +142,7 @@ void main() {
       (t) async {
         await open(
           t,
-          CourseClassroom(
+          AulaCurso(
             owner: true,
             course: {
               'id': '9',

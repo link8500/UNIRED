@@ -2,23 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dio/dio.dart';
 import 'package:unired/main.dart';
-import 'package:unired/core/network/api_client.dart';
-import 'package:unired/core/services/app_service.dart';
-import 'package:unired/core/utils/app_navigator.dart';
-import 'package:unired/models/auth/models/app_user.dart';
-import 'package:unired/shared/themes/app_theme.dart';
+import 'package:unired/core/datos/remoto/cliente_api.dart';
+import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
+import 'package:unired/models/aplicacion/navegacion/navegador_aplicacion.dart';
+import 'package:unired/models/autenticacion/models/usuario_aplicacion.dart';
+import 'package:unired/shared/temas/tema_aplicacion.dart';
 import 'support/test_adapter.dart';
 
 void main() {
-  late AppService service;
+  late AplicacionController service;
   setUp(() {
     final dio = Dio()
       ..httpClientAdapter = TestAdapter(
         (_) async =>
             TestReply({'items': [], 'total': 0, 'page': 1, 'limit': 50}),
       );
-    service = AppService(client: ApiClient(dio: dio));
-    AppService.replaceInstanceForTesting(service);
+    service = AplicacionController(client: ClienteApi(dio: dio));
+    AplicacionController.replaceInstanceForTesting(service);
   });
   tearDown(() => service.dispose());
   for (final required in [false, true]) {
@@ -32,16 +32,16 @@ void main() {
           }, status: 201),
         );
         service.dispose();
-        service = AppService(
-          client: ApiClient(dio: Dio()..httpClientAdapter = adapter),
+        service = AplicacionController(
+          client: ClienteApi(dio: Dio()..httpClientAdapter = adapter),
         );
-        AppService.replaceInstanceForTesting(service);
+        AplicacionController.replaceInstanceForTesting(service);
         await tester.pumpWidget(
           MaterialApp(
-            theme: AppTheme.light,
-            initialRoute: AppRoutes.register,
-            navigatorObservers: [AppNavigator.observer],
-            onGenerateRoute: AppNavigator.onGenerateRoute,
+            theme: TemaAplicacion.light,
+            initialRoute: RutasAplicacion.register,
+            navigatorObservers: [NavegadorAplicacion.observer],
+            onGenerateRoute: NavegadorAplicacion.onGenerateRoute,
           ),
         );
         await tester.pumpAndSettle();
@@ -102,24 +102,24 @@ void main() {
         ),
       );
       service.dispose();
-      service = AppService(
-        client: ApiClient(dio: Dio()..httpClientAdapter = adapter),
+      service = AplicacionController(
+        client: ClienteApi(dio: Dio()..httpClientAdapter = adapter),
       );
-      service.currentUser = const AppUser(
+      service.currentUser = const UsuarioAplicacion(
         id: '1',
         name: 'Administrador',
         email: 'admin@example.test',
         university: '',
         roles: ['usuario', 'administrador'],
       );
-      AppService.replaceInstanceForTesting(service);
+      AplicacionController.replaceInstanceForTesting(service);
       await tester.runAsync(service.loadAdminUsers);
       await tester.pumpWidget(
         MaterialApp(
-          theme: AppTheme.light,
-          initialRoute: AppRoutes.user,
-          navigatorObservers: [AppNavigator.observer],
-          onGenerateRoute: AppNavigator.onGenerateRoute,
+          theme: TemaAplicacion.light,
+          initialRoute: RutasAplicacion.user,
+          navigatorObservers: [NavegadorAplicacion.observer],
+          onGenerateRoute: NavegadorAplicacion.onGenerateRoute,
         ),
       );
       await tester.pumpAndSettle();
@@ -141,8 +141,8 @@ void main() {
   );
   test('la navegación no utiliza animaciones', () {
     final route =
-        AppNavigator.onGenerateRoute(
-              const RouteSettings(name: AppRoutes.market),
+        NavegadorAplicacion.onGenerateRoute(
+              const RouteSettings(name: RutasAplicacion.market),
             )
             as PageRoute;
     expect(route.transitionDuration, Duration.zero);
@@ -151,7 +151,7 @@ void main() {
   testWidgets('el inicio conserva el diseño sin inventar publicaciones', (
     tester,
   ) async {
-    await tester.pumpWidget(const UniRedApp());
+    await tester.pumpWidget(const AplicacionUniRed());
     await tester.pumpAndSettle();
     expect(find.text('Artículos más populares'), findsOneWidget);
     expect(find.text('Apuntes de cálculo II'), findsNothing);
@@ -160,10 +160,10 @@ void main() {
   testWidgets('el panel no se abre para una sesión anónima', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        theme: AppTheme.light,
-        initialRoute: AppRoutes.dashboard,
-        navigatorObservers: [AppNavigator.observer],
-        onGenerateRoute: AppNavigator.onGenerateRoute,
+        theme: TemaAplicacion.light,
+        initialRoute: RutasAplicacion.dashboard,
+        navigatorObservers: [NavegadorAplicacion.observer],
+        onGenerateRoute: NavegadorAplicacion.onGenerateRoute,
       ),
     );
     await tester.pumpAndSettle();
@@ -179,10 +179,10 @@ void main() {
   ) async {
     await tester.pumpWidget(
       MaterialApp(
-        theme: AppTheme.light,
-        initialRoute: AppRoutes.login,
-        navigatorObservers: [AppNavigator.observer],
-        onGenerateRoute: AppNavigator.onGenerateRoute,
+        theme: TemaAplicacion.light,
+        initialRoute: RutasAplicacion.login,
+        navigatorObservers: [NavegadorAplicacion.observer],
+        onGenerateRoute: NavegadorAplicacion.onGenerateRoute,
       ),
     );
     await tester.pumpAndSettle();
@@ -197,17 +197,17 @@ void main() {
     final observer = _Observer();
     await tester.pumpWidget(
       MaterialApp(
-        theme: AppTheme.light,
-        initialRoute: AppRoutes.home,
-        navigatorObservers: [AppNavigator.observer, observer],
-        onGenerateRoute: AppNavigator.onGenerateRoute,
+        theme: TemaAplicacion.light,
+        initialRoute: RutasAplicacion.home,
+        navigatorObservers: [NavegadorAplicacion.observer, observer],
+        onGenerateRoute: NavegadorAplicacion.onGenerateRoute,
       ),
     );
     await tester.pumpAndSettle();
     final count = observer.pushes;
-    AppNavigator.go(
+    NavegadorAplicacion.go(
       tester.element(find.text('Artículos más populares')),
-      AppRoutes.home,
+      RutasAplicacion.home,
     );
     await tester.pumpAndSettle();
     expect(observer.pushes, count);

@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:unired/core/network/api_client.dart';
-import 'package:unired/shared/themes/app_theme.dart';
-import 'package:unired/shared/widgets/api_widgets.dart';
-import 'package:unired/shared/widgets/app_feedback.dart';
-import 'package:unired/shared/widgets/publication_image_editor.dart';
+import 'package:unired/core/datos/remoto/cliente_api.dart';
+import 'package:unired/shared/temas/tema_aplicacion.dart';
+import 'package:unired/shared/widgets/widgets_api.dart';
+import 'package:unired/shared/widgets/avisos_aplicacion.dart';
+import 'package:unired/shared/widgets/editor_imagen_publicacion.dart';
 import 'dart:typed_data';
 
 void main() {
@@ -14,12 +14,12 @@ void main() {
     (t) async {
       await t.pumpWidget(
         MaterialApp(
-          navigatorKey: AppFeedback.navigatorKey,
-          theme: AppTheme.light,
+          navigatorKey: AvisosAplicacion.navigatorKey,
+          theme: TemaAplicacion.light,
           builder: (_, child) => Column(
             children: [
               Expanded(child: child!),
-              const ApiErrorNotice(message: 'Servidor no disponible'),
+              const AvisoErrorApi(message: 'Servidor no disponible'),
             ],
           ),
           home: const Scaffold(body: Text('Inicio')),
@@ -36,7 +36,7 @@ void main() {
   Future<void> open(WidgetTester t, void Function(BuildContext) action) =>
       t.pumpWidget(
         MaterialApp(
-          theme: AppTheme.light,
+          theme: TemaAplicacion.light,
           home: Scaffold(
             body: Builder(
               builder: (context) => TextButton(
@@ -56,7 +56,7 @@ void main() {
       await open(t, (context) {
         result = runApiAction(context, () async {
           attempts++;
-          throw const ApiError('La imagen supera el límite permitido.');
+          throw const ErrorApi('La imagen supera el límite permitido.');
         });
       });
       await t.tap(find.text('Probar aviso'));
@@ -82,12 +82,15 @@ void main() {
     'avisos simultáneos iguales no se duplican y los distintos esperan',
     (t) async {
       await open(t, (context) {
-        final first = AppFeedback.show(context, message: 'Primer aviso');
+        final first = AvisosAplicacion.show(context, message: 'Primer aviso');
         expect(
-          identical(first, AppFeedback.show(context, message: 'Primer aviso')),
+          identical(
+            first,
+            AvisosAplicacion.show(context, message: 'Primer aviso'),
+          ),
           isTrue,
         );
-        unawaited(AppFeedback.show(context, message: 'Segundo aviso'));
+        unawaited(AvisosAplicacion.show(context, message: 'Segundo aviso'));
       });
       await t.tap(find.text('Probar aviso'));
       await t.pumpAndSettle();
@@ -109,11 +112,11 @@ void main() {
     addTearDown(rebuild.dispose);
     await t.pumpWidget(
       MaterialApp(
-        theme: AppTheme.light,
+        theme: TemaAplicacion.light,
         home: Scaffold(
           body: ValueListenableBuilder(
             valueListenable: rebuild,
-            builder: (_, _, _) => const ApiErrorNotice(message: 'Sin conexión'),
+            builder: (_, _, _) => const AvisoErrorApi(message: 'Sin conexión'),
           ),
         ),
       ),
@@ -165,7 +168,7 @@ void main() {
     bool? answer;
     await t.pumpWidget(
       MaterialApp(
-        theme: AppTheme.light,
+        theme: TemaAplicacion.light,
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(
             context,
@@ -175,9 +178,9 @@ void main() {
         home: Scaffold(
           body: Builder(
             builder: (context) => TextButton(
-              onPressed: () async => answer = await AppFeedback.show(
+              onPressed: () async => answer = await AvisosAplicacion.show(
                 context,
-                kind: FeedbackKind.warning,
+                kind: TipoAviso.warning,
                 message:
                     'Revisa los datos antes de continuar con la publicación.',
                 action: 'Continuar',

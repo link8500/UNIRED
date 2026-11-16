@@ -1,17 +1,21 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:unired/core/network/api_client.dart';
-import 'package:unired/core/network/api_data.dart';
-import 'package:unired/core/services/app_service.dart';
-import 'package:unired/core/constants/upload_limits.dart';
-import 'package:unired/core/utils/navigation_progress_controller.dart';
-import 'package:unired/models/auth/models/app_user.dart';
+import 'package:unired/core/datos/remoto/cliente_api.dart';
+import 'package:unired/core/dominio/datos_api.dart';
+import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
+import 'package:unired/core/constantes/limites_archivos.dart';
+import 'package:unired/shared/controllers/progreso_navegacion_controller.dart';
+import 'package:unired/models/autenticacion/models/usuario_aplicacion.dart';
 import 'support/test_adapter.dart';
 
-ApiClient client(TestAdapter adapter) {
+ClienteApi client(TestAdapter adapter) {
   final dio = Dio()..httpClientAdapter = adapter;
-  return ApiClient(dio: dio, baseUrl: 'http://127.0.0.1:3000/api/v1');
+  return ClienteApi(
+    dio: dio,
+    baseUrl: 'http://127.0.0.1:3000/api/v1',
+    progreso: ProgresoNavegacionController.instance,
+  );
 }
 
 Json page() => {'items': <Object>[], 'total': 0, 'page': 1, 'limit': 50};
@@ -19,18 +23,18 @@ Json page() => {'items': <Object>[], 'total': 0, 'page': 1, 'limit': 50};
 void main() {
   test('los límites evitan videos enormes en el multipart del navegador', () {
     expect(
-      UploadLimits.forSelection('video_leccion', 'video.mp4', web: true),
+      LimitesArchivos.forSelection('video_leccion', 'video.mp4', web: true),
       128 * 1048576,
     );
     expect(
-      UploadLimits.forSelection('video_leccion', 'video.mp4', web: false),
+      LimitesArchivos.forSelection('video_leccion', 'video.mp4', web: false),
       1073741824,
     );
     expect(
-      UploadLimits.forSelection('evidencia_tutor', 'documento.PDF'),
+      LimitesArchivos.forSelection('evidencia_tutor', 'documento.PDF'),
       20 * 1048576,
     );
-    expect(UploadLimits.forSelection('avatar', 'foto.png'), 10 * 1048576);
+    expect(LimitesArchivos.forSelection('avatar', 'foto.png'), 10 * 1048576);
   });
   test(
     'una respuesta anterior al cierre de sesión no entra en otra cuenta',
@@ -45,7 +49,7 @@ void main() {
       final request = api.object('/me');
       final rejected = expectLater(
         request,
-        throwsA(isA<ApiError>().having((e) => e.status, 'status', 401)),
+        throwsA(isA<ErrorApi>().having((e) => e.status, 'status', 401)),
       );
       await Future<void>.delayed(Duration.zero);
       api.clearSession();
@@ -71,10 +75,10 @@ void main() {
         await api.object('/second');
       });
       await middle.future;
-      expect(NavigationProgressController.instance.value < 1, isTrue);
+      expect(ProgresoNavegacionController.instance.value < 1, isTrue);
       gate.complete();
       await action;
-      expect(NavigationProgressController.instance.value, 1);
+      expect(ProgresoNavegacionController.instance.value, 1);
     },
   );
   test('actualizar el catálogo conserva la búsqueda y la categoría', () async {
@@ -83,7 +87,7 @@ void main() {
         ['/categories', '/areas'].contains(options.path) ? <Object>[] : page(),
       ),
     );
-    final service = AppService(client: client(adapter));
+    final service = AplicacionController(client: client(adapter));
     await service.initialize();
     await service.searchMarket(query: {'q': 'cuaderno', 'categoriaId': 1});
     await service.initialize(force: true);
@@ -161,7 +165,7 @@ void main() {
           'expiresIn': 900,
         })
         ..onSessionExpired = () => expired = true;
-      await expectLater(api.object('/me'), throwsA(isA<ApiError>()));
+      await expectLater(api.object('/me'), throwsA(isA<ErrorApi>()));
       expect(api.hasSession, isFalse);
       expect(expired, isTrue);
       expect(adapter.requests.length, 2);
@@ -177,7 +181,7 @@ void main() {
     final api = client(adapter);
     await expectLater(
       api.object('/me/listings/1', method: 'PATCH', data: {'versionLock': 1}),
-      throwsA(isA<ApiError>().having((e) => e.status, 'status', 409)),
+      throwsA(isA<ErrorApi>().having((e) => e.status, 'status', 409)),
     );
     expect(adapter.requests.length, 1);
   });
@@ -207,7 +211,7 @@ void main() {
         ),
       ),
     );
-    final service = AppService(client: api);
+    final service = AplicacionController(client: api);
     await service.initialize();
     expect(service.initialized, isTrue);
     expect(service.products, isEmpty);
@@ -215,7 +219,7 @@ void main() {
     service.dispose();
   });
   test('una API caída muestra error sin inventar productos', () async {
-    final service = AppService(
+    final service = AplicacionController(
       client: client(
         TestAdapter(
           (_) async =>
@@ -252,7 +256,7 @@ void main() {
         }
         return TestReply(page());
       });
-      final service = AppService(client: client(adapter));
+      final service = AplicacionController(client: client(adapter));
       await service.signIn(
         email: 'ana@example.test',
         password: 'Clave-de-prueba-2026',
@@ -285,7 +289,7 @@ void main() {
       if (options.path == '/me/tutor-grants') return TestReply(<Object>[]);
       return TestReply(page());
     });
-    final service = AppService(client: client(adapter));
+    final service = AplicacionController(client: client(adapter));
     await service.signIn(
       email: 'ana@example.test',
       password: 'Clave-de-prueba-2026',
@@ -307,7 +311,7 @@ void main() {
           'perfil': {'ciudad': 'Managua'},
         }),
       );
-      final service = AppService(client: client(adapter));
+      final service = AplicacionController(client: client(adapter));
       await service.saveProfileData({
         'nombre': 'Ana',
         'ciudad': 'Managua',
@@ -324,14 +328,14 @@ void main() {
   test(
     'el servidor rechazando un favorito no cambia el estado local',
     () async {
-      final service = AppService(
+      final service = AplicacionController(
         client: client(
           TestAdapter(
             (_) async => TestReply({'message': 'No permitido'}, status: 403),
           ),
         ),
       );
-      service.currentUser = const AppUser(
+      service.currentUser = const UsuarioAplicacion(
         id: '1',
         name: 'Ana',
         email: 'a@example.test',
@@ -343,7 +347,7 @@ void main() {
         'tipoPrecio': 'gratis',
         'precioBase': '0.00',
       });
-      await expectLater(service.toggleFavorite(item), throwsA(isA<ApiError>()));
+      await expectLater(service.toggleFavorite(item), throwsA(isA<ErrorApi>()));
       expect(service.isFavorite(item), isFalse);
       expect(item.displayPrice, 'Gratis');
       service.dispose();
@@ -353,7 +357,7 @@ void main() {
     'las imágenes se descargan una sola vez dentro de la misma sesión',
     () async {
       final adapter = TestAdapter((_) async => TestReply([1, 2, 3]));
-      final service = AppService(client: client(adapter));
+      final service = AplicacionController(client: client(adapter));
       await Future.wait([service.imageBytes('5'), service.imageBytes('5')]);
       expect(adapter.requests.length, 1);
       service.dispose();
@@ -369,13 +373,13 @@ void main() {
       final a = api.object('/first');
       final b = api.object('/second');
       await Future<void>.delayed(Duration.zero);
-      expect(NavigationProgressController.instance.visible, isTrue);
+      expect(ProgresoNavegacionController.instance.visible, isTrue);
       first.complete(TestReply({}));
       await a;
-      expect(NavigationProgressController.instance.value < 1, isTrue);
+      expect(ProgresoNavegacionController.instance.value < 1, isTrue);
       second.complete(TestReply({}));
       await b;
-      expect(NavigationProgressController.instance.value, 1);
+      expect(ProgresoNavegacionController.instance.value, 1);
     },
   );
 }

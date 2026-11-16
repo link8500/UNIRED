@@ -5,15 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:unired/core/network/api_client.dart';
-import 'package:unired/core/network/api_data.dart';
-import 'package:unired/core/services/app_service.dart';
-import 'package:unired/core/utils/app_navigator.dart';
-import 'package:unired/models/auth/models/app_user.dart';
-import 'package:unired/models/admin/widgets/publication_editor.dart';
-import 'package:unired/shared/themes/app_theme.dart';
-import 'package:unired/shared/widgets/publication_image_editor.dart';
-import 'package:unired/shared/widgets/app_feedback.dart';
+import 'package:unired/core/datos/remoto/cliente_api.dart';
+import 'package:unired/core/dominio/datos_api.dart';
+import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
+import 'package:unired/models/aplicacion/navegacion/navegador_aplicacion.dart';
+import 'package:unired/models/autenticacion/models/usuario_aplicacion.dart';
+import 'package:unired/models/administracion/widgets/editor_publicacion.dart';
+import 'package:unired/shared/temas/tema_aplicacion.dart';
+import 'package:unired/shared/widgets/editor_imagen_publicacion.dart';
+import 'package:unired/shared/widgets/avisos_aplicacion.dart';
 import 'support/test_adapter.dart';
 
 void main() {
@@ -30,7 +30,7 @@ void main() {
       )..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'))).load();
     }
   });
-  late AppService service;
+  late AplicacionController service;
   late TestAdapter adapter;
   late List<Json> messages;
   late Uint8List photo;
@@ -144,8 +144,10 @@ void main() {
       return TestReply({'items': <Json>[], 'total': 0, 'page': 1, 'limit': 20});
     });
     service =
-        AppService(client: ApiClient(dio: Dio()..httpClientAdapter = adapter))
-          ..currentUser = const AppUser(
+        AplicacionController(
+            client: ClienteApi(dio: Dio()..httpClientAdapter = adapter),
+          )
+          ..currentUser = const UsuarioAplicacion(
             id: '1',
             name: 'Alex Bryan',
             email: 'alex@example.test',
@@ -166,7 +168,7 @@ void main() {
           ..areas = [
             {'id': 1, 'nombre': 'Software'},
           ];
-    AppService.replaceInstanceForTesting(service);
+    AplicacionController.replaceInstanceForTesting(service);
   });
   tearDown(() => service.dispose());
   Future<GlobalKey> open(WidgetTester t, String route, Size size) async {
@@ -180,10 +182,10 @@ void main() {
         key: key,
         child: MaterialApp(
           debugShowCheckedModeBanner: false,
-          theme: AppTheme.light,
+          theme: TemaAplicacion.light,
           initialRoute: route,
-          onGenerateRoute: AppNavigator.onGenerateRoute,
-          navigatorObservers: [AppNavigator.observer],
+          onGenerateRoute: NavegadorAplicacion.onGenerateRoute,
+          navigatorObservers: [NavegadorAplicacion.observer],
         ),
       ),
     );
@@ -212,7 +214,7 @@ void main() {
 
   for (final size in [const Size(1440, 1000), const Size(390, 844)]) {
     testWidgets('cuenta de lectura, menú y edición ${size.width}', (t) async {
-      const member = AppUser(
+      const member = UsuarioAplicacion(
         id: '12',
         name: 'Andrea Molina',
         email: 'andrea@example.test',
@@ -259,7 +261,7 @@ void main() {
         return TestReply({'items': [], 'page': 1, 'limit': 50, 'total': 0});
       });
       final suffix = size.width > 1000 ? 'desktop' : 'mobile';
-      final key = await open(t, AppRoutes.profile, size);
+      final key = await open(t, RutasAplicacion.profile, size);
       expect(
         find.text('Me interesa el diseño y la programación.'),
         findsOneWidget,
@@ -307,13 +309,17 @@ void main() {
       (t) async {
         final key = await open(
           t,
-          AppRoutes.publication(tutorial: false, admin: true, editing: true),
+          RutasAplicacion.publication(
+            tutorial: false,
+            admin: true,
+            editing: true,
+          ),
           size,
         );
         final context = t.element(find.byType(Scaffold).first);
-        AppFeedback.show(
+        AvisosAplicacion.show(
           context,
-          kind: FeedbackKind.warning,
+          kind: TipoAviso.warning,
           title: 'No se pudo subir la imagen',
           message:
               'La fotografía supera el límite de 10 MiB. Selecciona una imagen JPG, PNG o WebP más pequeña.',
@@ -334,7 +340,11 @@ void main() {
     testWidgets(
       'chat del administrador conserva el panel y envía mensajes ${size.width}',
       (t) async {
-        final key = await open(t, '${AppRoutes.adminMessages}?id=10', size);
+        final key = await open(
+          t,
+          '${RutasAplicacion.adminMessages}?id=10',
+          size,
+        );
         expect(find.text('Sí, todavía está disponible.'), findsOneWidget);
         expect(find.byTooltip('Enviar mensaje'), findsOneWidget);
         expect(find.text('Información.pdf'), findsAtLeastNWidgets(1));
@@ -375,7 +385,7 @@ void main() {
   testWidgets('Inicio oculta el registro a una cuenta que ya inició sesión', (
     t,
   ) async {
-    final key = await open(t, AppRoutes.home, const Size(1440, 1000));
+    final key = await open(t, RutasAplicacion.home, const Size(1440, 1000));
     expect(find.text('Explorar tutorías'), findsOneWidget);
     expect(find.text('Crear cuenta'), findsNothing);
     await preview(t, key, 'home-desktop');
@@ -385,7 +395,7 @@ void main() {
   testWidgets('Ajustes ubica el teléfono en Privacidad', (t) async {
     final key = await open(
       t,
-      '${AppRoutes.profile}?tab=preferences',
+      '${RutasAplicacion.profile}?tab=preferences',
       const Size(1440, 1000),
     );
     expect(find.text('Seguridad y sesiones'), findsOneWidget);
@@ -401,7 +411,7 @@ void main() {
   testWidgets('el usuario tiene bandeja propia sin navegación administrativa', (
     t,
   ) async {
-    service.currentUser = const AppUser(
+    service.currentUser = const UsuarioAplicacion(
       id: '1',
       name: 'Estudiante',
       email: 'e@example.test',
@@ -410,7 +420,7 @@ void main() {
     );
     final key = await open(
       t,
-      '${AppRoutes.messages}?id=10',
+      '${RutasAplicacion.messages}?id=10',
       const Size(1440, 1000),
     );
     expect(find.text('Chats'), findsOneWidget);
@@ -420,7 +430,11 @@ void main() {
     await t.pumpWidget(const SizedBox());
   });
   testWidgets('el chat prepara un municipio antes de enviarlo', (t) async {
-    await open(t, '${AppRoutes.adminMessages}?id=10', const Size(1440, 1000));
+    await open(
+      t,
+      '${RutasAplicacion.adminMessages}?id=10',
+      const Size(1440, 1000),
+    );
     await t.tap(find.byTooltip('Compartir municipio'));
     await t.pumpAndSettle();
     await t.enterText(find.byType(TextField).last, 'leon');
@@ -447,7 +461,11 @@ void main() {
   testWidgets('los detalles del chat se abren en una pantalla intermedia', (
     t,
   ) async {
-    await open(t, '${AppRoutes.adminMessages}?id=10', const Size(1024, 900));
+    await open(
+      t,
+      '${RutasAplicacion.adminMessages}?id=10',
+      const Size(1024, 900),
+    );
     await t.tap(find.byTooltip('Detalles de la conversación'));
     await t.pumpAndSettle();
     expect(find.text('Acerca de esta conversación'), findsOneWidget);
@@ -467,9 +485,9 @@ void main() {
           key: key,
           child: MaterialApp(
             debugShowCheckedModeBanner: false,
-            theme: AppTheme.light,
+            theme: TemaAplicacion.light,
             home: Scaffold(
-              body: PublicationEditor(
+              body: EditorPublicacion(
                 isTutorial: false,
                 initial: {
                   'titulo': 'Libro para aprender programación',
@@ -518,7 +536,7 @@ void main() {
     Uint8List? output;
     await t.pumpWidget(
       MaterialApp(
-        theme: AppTheme.light,
+        theme: TemaAplicacion.light,
         home: Scaffold(
           body: Builder(
             builder: (context) => TextButton(
@@ -561,7 +579,7 @@ void main() {
       final image = await fixtureImage();
       Future<Uint8List> pixels(double x) async {
         final rec = ui.PictureRecorder();
-        PublicationImagePainter(
+        PintorImagenPublicacion(
           image: image,
           fill: true,
           position: Offset(x, 0),
