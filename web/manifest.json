@@ -1,11 +1,11 @@
 {
-    "name": "unired",
-    "short_name": "unired",
+    "name": "UniRed",
+    "short_name": "UniRed",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FFFFFF",
     "theme_color": "#0079D3",
-    "description": "A new Flutter project.",
+    "description": "UniRed: tutorías, marketplace y conversaciones para tu comunidad universitaria.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

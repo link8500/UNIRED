@@ -17,8 +17,15 @@
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="UniRed: aprende con tutores acreditados, comparte recursos y descubre artículos de la comunidad.">
+  <meta name="application-name" content="UniRed">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="UniRed">
+  <meta property="og:description" content="Tutorías, marketplace y conversaciones para conectar con tu comunidad universitaria.">
+  <meta property="og:image" content="https://unired-link8500.netlify.app/icons/Icon-512.png">
+  <meta property="og:url" content="https://unired-link8500.netlify.app/">
 
   <!-- AdSense: identifica al editor y carga una sola vez el código de anuncios. -->
   <meta name="google-adsense-account" content="ca-pub-6670088332513129">
@@ -28,7 +35,7 @@
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="unired">
+  <meta name="apple-mobile-web-app-title" content="UniRed">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
@@ -36,6 +43,7 @@
 
   <title>UniRed · Aprende y conecta</title>
   <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="presentacion.css">
   <script>
     // Flutter puede cancelar Ctrl + rueda al convertirlo en un gesto interno.
     // Captúralo antes de que llegue al lienzo y conserva el zoom del navegador.
@@ -47,14 +55,83 @@
   </script>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
-
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
-  <script src="flutter_bootstrap.js" async></script>
+  <!-- Presentación pública disponible antes de iniciar Flutter y sin JavaScript. -->
+  <div class="unired-start" id="presentacion-unired">
+    <header class="unired-start-header">
+      <a class="unired-start-brand" href="#/home" aria-label="UniRed, inicio">
+        <img src="icons/Icon-192.png" width="42" height="42" alt="">
+        <span>Uni<span class="unired-start-coral">Red</span></span>
+      </a>
+      <nav aria-label="Información de UniRed">
+        <a href="privacidad.html">Privacidad</a>
+        <a href="condiciones.html">Condiciones de uso</a>
+      </nav>
+    </header>
+    <main class="unired-start-main">
+      <section class="unired-start-hero" aria-labelledby="nombre-unired">
+        <div>
+          <p class="unired-start-eyebrow">Tu comunidad universitaria</p>
+          <h1 id="nombre-unired">UniRed</h1>
+          <p class="unired-start-lead">Aprende, comparte y conecta.</p>
+          <p class="unired-start-description">
+            Encuentra tutorías, descubre publicaciones del marketplace y conversa
+            con otras personas de tu comunidad. UniRed es un proyecto universitario
+            que reúne tu aprendizaje y tus intercambios en un mismo lugar.
+          </p>
+          <div class="unired-start-status" role="status" aria-live="polite" hidden>
+            <span class="unired-start-indicator" aria-hidden="true"></span>
+            <span id="estado-inicio-unired">Estamos abriendo UniRed…</span>
+          </div>
+          <button id="reintentar-unired" class="unired-start-retry" type="button" hidden>
+            Volver a intentar
+          </button>
+          <noscript>
+            <p class="unired-start-noscript">
+              Activa JavaScript en tu navegador para entrar a la aplicación.
+              Puedes consultar aquí su presentación, privacidad y condiciones.
+            </p>
+          </noscript>
+        </div>
+        <aside class="unired-start-identity" aria-labelledby="acceso-unired">
+          <img src="icons/Icon-512.png" width="112" height="112" alt="Símbolo de UniRed">
+          <h2 id="acceso-unired">Tu cuenta, tu comunidad</h2>
+          <p>
+            Al elegir el acceso con Google, utilizamos el identificador, nombre
+            y correo que autorices para comprobar tu identidad y crear o vincular
+            tu cuenta de UniRed. No recibimos tu contraseña de Google.
+          </p>
+          <a href="privacidad.html">Conoce cómo utilizamos tus datos <span aria-hidden="true">↗</span></a>
+        </aside>
+      </section>
+      <section class="unired-start-features" aria-label="Qué puedes hacer en UniRed">
+        <article>
+          <span class="unired-start-number" aria-hidden="true">01</span>
+          <h2>Tutorías y aprendizaje</h2>
+          <p>Consulta las ofertas de tutoría, solicita acceso y sigue los materiales y tu avance según tu inscripción.</p>
+        </article>
+        <article>
+          <span class="unired-start-number" aria-hidden="true">02</span>
+          <h2>Marketplace universitario</h2>
+          <p>Explora artículos, publica lo que ofreces y contacta con la persona que vende para consultar los detalles.</p>
+        </article>
+        <article>
+          <span class="unired-start-number" aria-hidden="true">03</span>
+          <h2>Conversaciones con contexto</h2>
+          <p>Habla sobre una tutoría o publicación concreta y conserva el hilo de cada solicitud desde tu cuenta.</p>
+        </article>
+      </section>
+    </main>
+    <footer class="unired-start-footer">
+      <span>UniRed · Comunidad universitaria</span>
+      <nav aria-label="Documentación y contacto">
+        <a href="privacidad.html">Política de privacidad</a>
+        <a href="condiciones.html">Condiciones de uso</a>
+        <a href="eliminacion-datos.html">Eliminar mis datos</a>
+        <a href="mailto:celestinotorrez@yahoo.com">Contacto</a>
+      </nav>
+    </footer>
+  </div>
+  <script src="presentacion.js"></script>
+  <script id="inicio-flutter-unired" src="flutter_bootstrap.js" async></script>
 </body>
 </html>

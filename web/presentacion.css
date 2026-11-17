@@ -1,0 +1,242 @@
+body {
+  margin: 0;
+}
+
+.unired-start {
+  box-sizing: border-box;
+  min-height: 100vh;
+  background: #f7f9fc;
+  color: #192b3f;
+  font: 16px/1.6 Arial, Helvetica, sans-serif;
+}
+
+.unired-start *,
+.unired-start *::before,
+.unired-start *::after {
+  box-sizing: border-box;
+}
+
+.unired-start [hidden] {
+  display: none !important;
+}
+
+.unired-start a {
+  color: #0677ce;
+  text-underline-offset: 4px;
+}
+
+.unired-start a:focus-visible,
+.unired-start button:focus-visible {
+  outline: 3px solid #ee5a6a;
+  outline-offset: 5px;
+  border-radius: 4px;
+}
+
+.unired-start-header,
+.unired-start-main,
+.unired-start-footer {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 24px 32px;
+}
+
+.unired-start-header,
+.unired-start-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.unired-start-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -1.4px;
+  text-decoration: none;
+}
+
+.unired-start-coral {
+  color: #e44f65;
+}
+
+.unired-start nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  font-size: 14px;
+}
+
+.unired-start nav a {
+  text-decoration: none;
+}
+
+.unired-start nav a:hover {
+  text-decoration: underline;
+}
+
+.unired-start-main {
+  padding-top: 52px;
+  padding-bottom: 48px;
+}
+
+.unired-start-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr);
+  gap: 64px;
+  align-items: center;
+}
+
+.unired-start p {
+  margin: 0 0 18px;
+}
+
+.unired-start-eyebrow {
+  color: #b82c46;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.unired-start h1 {
+  margin: 0 0 4px;
+  color: #0677ce;
+  font-size: clamp(48px, 7vw, 72px);
+  line-height: 1.15;
+  letter-spacing: -3px;
+}
+
+.unired-start-lead {
+  font-size: clamp(23px, 3vw, 32px);
+  font-weight: 700;
+  letter-spacing: -0.8px;
+}
+
+.unired-start-description,
+.unired-start-identity p,
+.unired-start-features p {
+  color: #526275;
+}
+
+.unired-start-identity {
+  padding: 30px;
+  border: 1px solid #e0e7ef;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 12px 36px #16375608;
+}
+
+.unired-start-identity img {
+  display: block;
+  margin-bottom: 18px;
+}
+
+.unired-start h2 {
+  font-size: 20px;
+  line-height: 1.35;
+  margin: 0 0 14px;
+}
+
+.unired-start-identity p,
+.unired-start-identity a {
+  font-size: 14px;
+}
+
+.unired-start-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 28px;
+  color: #526275;
+  font-size: 14px;
+}
+
+.unired-start-indicator {
+  flex: 0 0 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #0677ce;
+}
+
+.unired-start-retry {
+  margin-top: 16px;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 10px;
+  background: #0677ce;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.unired-start-noscript {
+  margin-top: 16px !important;
+  padding: 14px 16px;
+  border-left: 3px solid #0677ce;
+  background: #eaf3fc;
+  font-size: 14px;
+}
+
+.unired-start-features {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px;
+  margin-top: 48px;
+  padding-top: 32px;
+  border-top: 1px solid #e0e7ef;
+}
+
+.unired-start-features h2 {
+  font-size: 17px;
+  margin: 10px 0;
+}
+
+.unired-start-features p {
+  font-size: 14px;
+  margin: 0;
+}
+
+.unired-start-number {
+  color: #b82c46;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.unired-start-footer {
+  align-items: flex-start;
+  border-top: 1px solid #e0e7ef;
+  color: #526275;
+  font-size: 13px;
+}
+
+.unired-start-footer nav {
+  font-size: 13px;
+}
+
+@media (max-width: 760px) {
+  .unired-start-header,
+  .unired-start-main,
+  .unired-start-footer {
+    padding: 24px;
+  }
+
+  .unired-start-header,
+  .unired-start-footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .unired-start-hero,
+  .unired-start-features {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+  }
+
+  .unired-start-identity {
+    padding: 24px;
+  }
+}
