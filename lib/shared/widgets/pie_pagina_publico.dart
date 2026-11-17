@@ -2,10 +2,14 @@
 // Construye el pie de página y sus enlaces informativos.
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:unired/core/datos/remoto/cliente_api.dart';
 import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
 import 'package:unired/models/aplicacion/navegacion/navegador_aplicacion.dart';
 import 'package:unired/shared/temas/colores_aplicacion.dart';
 import 'package:unired/shared/widgets/logo_marca.dart';
+import 'package:unired/shared/widgets/widgets_api.dart';
 
 /// Footer de ancho completo, enlaces correctos y columnas adaptables.
 class PiePaginaPublico extends StatelessWidget {
@@ -128,14 +132,36 @@ class PiePaginaPublico extends StatelessWidget {
       style: const TextStyle(color: Colors.white70, fontSize: 12),
     ),
   );
+
+  // Abre la documentación pública en otra pestaña para conservar la sesión.
+  Future<void> _openLegal(BuildContext context, String path) async {
+    await runApiAction(context, () async {
+      final uri = kIsWeb
+          ? Uri.base.resolve(path)
+          : Uri.https('unired-link8500.netlify.app', path);
+      final opened = await launchUrl(uri, webOnlyWindowName: '_blank');
+      if (!opened) {
+        throw const ErrorApi('No se pudo abrir la página. Inténtalo de nuevo.');
+      }
+    });
+  }
+
   void _privacy(BuildContext context) => showDialog<void>(
     context: context,
     builder: (context) => AlertDialog(
       title: const Text('Privacidad en UniRed'),
       content: const Text(
-        'Tu nombre, presentación y publicaciones forman parte de tu perfil público. El correo y el teléfono son privados.\n\nLas conversaciones pueden ser consultadas por sus participantes y por el personal autorizado para revisarlas. Tus acreditaciones y el material restringido requieren permisos.\n\nLos pagos actuales son de demostración: los datos de la tarjeta no se envían ni se guardan.\n\nDesde Mi cuenta puedes actualizar tu información, gestionar tus publicaciones y revisar tus opciones de seguridad.',
+        'Tu nombre, presentación y publicaciones pueden formar parte de tu perfil público. El correo no se muestra en la ficha pública habitual; el teléfono solo se muestra si habilitas esa opción.\n\nLas conversaciones pueden ser consultadas por sus participantes y por el personal autorizado para revisarlas. Tus acreditaciones y el material restringido requieren permisos.\n\nLos pagos actuales son de demostración: los datos de la tarjeta no se envían ni se guardan.\n\nDesde Mi cuenta puedes actualizar tu información y revisar tus opciones de seguridad. Para solicitar la eliminación definitiva de tus datos, consulta las instrucciones públicas.',
       ),
       actions: [
+        TextButton(
+          onPressed: () => _openLegal(context, '/privacidad.html'),
+          child: const Text('Política completa'),
+        ),
+        TextButton(
+          onPressed: () => _openLegal(context, '/eliminacion-datos.html'),
+          child: const Text('Solicitar eliminación'),
+        ),
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: const Text('Entendido'),
