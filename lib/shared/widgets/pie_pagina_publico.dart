@@ -91,6 +91,13 @@ class PiePaginaPublico extends StatelessWidget {
               style: TextStyle(color: Colors.white70, fontSize: 12),
             ),
           ),
+          TextButton(
+            onPressed: () => _openLegal(context, '/condiciones.html'),
+            child: const Text(
+              'Condiciones de uso',
+              style: TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+          ),
         ]),
       ],
     );
