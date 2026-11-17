@@ -36,7 +36,9 @@ class _OperacionesViewState extends State<OperacionesView> {
     page: page,
     query: {if (!widget.audit && _state.isNotEmpty) 'estado': _state},
   );
-  void _reload() => setState(() => _page = _load());
+  void _reload() => setState(() {
+    _page = _load();
+  });
   @override
   Widget build(BuildContext context) => EstructuraAdministracion(
     current: widget.audit
@@ -238,7 +240,9 @@ class _OperacionesViewState extends State<OperacionesView> {
                           PaginacionApi(
                             page: page,
                             load: (page) async {
-                              setState(() => _page = _load(page));
+                              setState(() {
+                                _page = _load(page);
+                              });
                             },
                           ),
                         ],

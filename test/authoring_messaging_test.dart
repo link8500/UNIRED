@@ -145,7 +145,10 @@ void main() {
     });
     service =
         AplicacionController(
-            client: ClienteApi(dio: Dio()..httpClientAdapter = adapter),
+            client: ClienteApi(
+              enableLiveEvents: false,
+              dio: Dio()..httpClientAdapter = adapter,
+            ),
           )
           ..currentUser = const UsuarioAplicacion(
             id: '1',
@@ -402,8 +405,8 @@ void main() {
     expect(find.text('Visibilidad del teléfono'), findsNothing);
     await t.tap(find.widgetWithText(ChoiceChip, 'Privacidad'));
     await t.pumpAndSettle();
-    expect(find.text('Visibilidad del teléfono'), findsOneWidget);
-    expect(find.widgetWithText(ChoiceChip, 'Solo yo'), findsOneWidget);
+    expect(find.text('Tus datos de contacto son privados'), findsOneWidget);
+    expect(find.widgetWithText(ChoiceChip, 'Solo yo'), findsNothing);
     await preview(t, key, 'account-preferences-desktop');
     expect(t.takeException(), isNull);
   });

@@ -131,9 +131,9 @@ class PiePaginaPublico extends StatelessWidget {
   void _privacy(BuildContext context) => showDialog<void>(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text('Sobre tus datos'),
+      title: const Text('Privacidad en UniRed'),
       content: const Text(
-        'Tu perfil, publicaciones y conversaciones se guardan mediante la API UniRed. Las evidencias y los materiales privados requieren autorización. La sesión de este navegador permanece en memoria y se pierde al recargar, pero tus datos no se borran. Este aviso técnico no sustituye una política de privacidad definitiva.',
+        'Tu nombre, presentación y publicaciones forman parte de tu perfil público. El correo y el teléfono son privados.\n\nLas conversaciones pueden ser consultadas por sus participantes y por el personal autorizado para revisarlas. Tus acreditaciones y el material restringido requieren permisos.\n\nLos pagos actuales son de demostración: los datos de la tarjeta no se envían ni se guardan.\n\nDesde Mi cuenta puedes actualizar tu información, gestionar tus publicaciones y revisar tus opciones de seguridad.',
       ),
       actions: [
         TextButton(

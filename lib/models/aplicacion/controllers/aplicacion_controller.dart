@@ -3,6 +3,9 @@
 
 import 'dart:async';
 import 'dart:typed_data';
+import 'dart:convert';
+import 'dart:math';
+import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -18,13 +21,17 @@ import 'package:unired/models/notificaciones/models/aviso_usuario.dart';
 import 'package:unired/shared/temas/colores_aplicacion.dart';
 import 'package:unired/shared/controllers/progreso_navegacion_controller.dart';
 import 'package:unired/core/aplicacion/publicaciones_use_cases.dart';
+import 'package:unired/core/dominio/evento_servidor.dart';
+import 'package:unired/core/dominio/contratos/navegador_social.dart';
+import 'package:unired/core/datos/remoto/navegador_social.dart';
 
 /// Estado de presentación respaldado exclusivamente por la API NestJS.
 /// Se mantienen separados catálogo público, publicaciones propias y moderación.
 /// Ninguna mutación se confirma en pantalla antes de la respuesta del servidor.
 class AplicacionController extends ChangeNotifier {
-  AplicacionController({ClienteApi? client})
-    : api =
+  AplicacionController({ClienteApi? client, NavegadorSocial? socialBrowser})
+    : navegadorSocial = socialBrowser ?? crearNavegadorSocial(),
+      api =
           client ??
           ClienteApi(progreso: ProgresoNavegacionController.instance) {
     api.onSessionExpired = () => _clearAccount(clearTokens: false);
@@ -35,6 +42,7 @@ class AplicacionController extends ChangeNotifier {
   static void replaceInstanceForTesting(AplicacionController service) =>
       _instance = service;
   final ClienteApi api;
+  final NavegadorSocial navegadorSocial;
   late final publicaciones = PublicacionesUseCases(api);
   UsuarioAplicacion? currentUser;
   bool get isAdmin => currentUser?.isStaff ?? false;
@@ -47,8 +55,19 @@ class AplicacionController extends ChangeNotifier {
   bool initialized = false;
   String? lastError;
   int sessionEpoch = 0;
+  int notificationsRevision = 0;
+  int promotionsRevision = 0;
+  void refreshPublicPromotions() {
+    promotionsRevision++;
+    notifyListeners();
+  }
+
   Future<void>? _initializing;
   Timer? _noticesTimer;
+  StreamSubscription<EventoServidor>? _noticeEvents;
+  Timer? _eventsReconnect;
+  String _noticeCursor = '0';
+  bool _disposed = false;
 
   List<ArticuloMarket> _publicProducts = [];
   List<ArticuloMarket> _popularProducts = [];
@@ -135,6 +154,7 @@ class AplicacionController extends ChangeNotifier {
             'Usuario UniRed';
 
   ArticuloMarket productFromJson(Json row) => ArticuloMarket(
+    publicationType: textValue(row['tipoPublicacion'], 'venta'),
     id: textValue(row['id']),
     title: textValue(row['titulo']),
     description: textValue(row['descripcion']),
@@ -308,6 +328,100 @@ class AplicacionController extends ChangeNotifier {
     return true;
   }
 
+  Future<void> iniciarAccesoSocial(
+    String provider, {
+    bool vincular = false,
+    bool admin = false,
+  }) async {
+    if (!navegadorSocial.disponible) {
+      throw const ErrorApi('Este acceso está disponible en la versión web.');
+    }
+    if (!['google', 'facebook'].contains(provider)) {
+      throw const ErrorApi('Proveedor de acceso no válido.');
+    }
+    final random = Random.secure();
+    final verifier = base64UrlEncode(
+      List<int>.generate(64, (_) => random.nextInt(256)),
+    ).replaceAll('=', '');
+    final challenge = base64UrlEncode(
+      sha256.convert(utf8.encode(verifier)).bytes,
+    ).replaceAll('=', '');
+    navegadorSocial.guardar({
+      'verificador': verifier,
+      'proveedor': provider,
+      'admin': admin,
+      'vincular': vincular,
+      'creadoEn': DateTime.now().millisecondsSinceEpoch,
+    });
+    try {
+      final result = await api.object(
+        '${vincular ? '/me' : '/auth'}/social/$provider/start',
+        method: 'POST',
+        authenticated: vincular,
+        data: {'origen': navegadorSocial.origen, 'reto': challenge},
+      );
+      final target = Uri.parse(textValue(result['url']));
+      if (target.scheme != 'https' ||
+          !['accounts.google.com', 'www.facebook.com'].contains(target.host)) {
+        throw const ErrorApi(
+          'El proveedor devolvió un destino de acceso no válido.',
+        );
+      }
+      navegadorSocial.redirigir(target);
+    } catch (_) {
+      navegadorSocial.limpiar();
+      rethrow;
+    }
+  }
+
+  Future<Json> completarAccesoSocial(String code, {String? password}) async {
+    final pending = navegadorSocial.leer();
+    if (pending == null ||
+        DateTime.now().millisecondsSinceEpoch - intValue(pending['creadoEn']) >
+            10 * 60 * 1000) {
+      throw const ErrorApi(
+        'El intento caducó. Vuelve al acceso y selecciona Google o Facebook.',
+      );
+    }
+    final result = await api.object(
+      '/auth/social/exchange',
+      method: 'POST',
+      authenticated: false,
+      data: {
+        'codigo': code,
+        'verificador': pending['verificador'],
+        'passwordActual': ?password,
+      },
+    );
+    if (result['requierePassword'] == true ||
+        result['requiereAccesoPrevio'] == true) {
+      return result;
+    }
+    _clearAccount(clearTokens: true);
+    api.acceptTokens(result);
+    try {
+      await refreshMe();
+    } catch (_) {
+      _clearAccount();
+      rethrow;
+    }
+    navegadorSocial.limpiar();
+    if (pending['admin'] == true && currentUser?.isStaff != true) {
+      await logout();
+      throw const ErrorApi(
+        'Esta cuenta no tiene acceso al panel de administración.',
+        403,
+      );
+    }
+    await refreshAccountData();
+    _startNotices();
+    return {
+      ...result,
+      'volverAdmin': pending['admin'] == true,
+      'vincular': pending['vincular'] == true,
+    };
+  }
+
   Future<Json> register({
     required String name,
     required String email,
@@ -393,6 +507,10 @@ class AplicacionController extends ChangeNotifier {
   void _clearAccount({bool clearTokens = true}) {
     sessionEpoch++;
     _noticesTimer?.cancel();
+    _eventsReconnect?.cancel();
+    unawaited(_noticeEvents?.cancel());
+    _noticeEvents = null;
+    _noticeCursor = '0';
     if (clearTokens) api.clearSession();
     currentUser = null;
     _ownProducts = [];
@@ -442,6 +560,7 @@ class AplicacionController extends ChangeNotifier {
     if (epoch != sessionEpoch) return;
     final page = result[0];
     _unread = result[1].total;
+    notificationsRevision++;
     _notices = page.items
         .map(
           (n) => AvisoUsuario(
@@ -453,6 +572,8 @@ class AplicacionController extends ChangeNotifier {
             ),
             ownerId: currentUser!.id,
             read: n['leidaEn'] != null,
+            type: textValue(n['tipo']),
+            data: jsonObject(n['datos']),
           ),
         )
         .toList();
@@ -461,6 +582,9 @@ class AplicacionController extends ChangeNotifier {
 
   void _startNotices() {
     _noticesTimer?.cancel();
+    _eventsReconnect?.cancel();
+    unawaited(_noticeEvents?.cancel());
+    _connectNoticeEvents();
     _noticesTimer = Timer.periodic(const Duration(seconds: 20), (_) {
       if (currentUser?.verified == true && notificationsEnabled) {
         unawaited(
@@ -468,6 +592,45 @@ class AplicacionController extends ChangeNotifier {
         );
       }
     });
+  }
+
+  void _connectNoticeEvents() {
+    if (_disposed ||
+        !api.enableLiveEvents ||
+        currentUser?.verified != true ||
+        !notificationsEnabled) {
+      return;
+    }
+    final epoch = sessionEpoch;
+    void reconnect() {
+      if (_disposed || epoch != sessionEpoch || currentUser == null) return;
+      _eventsReconnect?.cancel();
+      _eventsReconnect = Timer(
+        const Duration(seconds: 3),
+        _connectNoticeEvents,
+      );
+    }
+
+    _noticeEvents = api
+        .events(afterId: _noticeCursor)
+        .listen(
+          (event) {
+            if (_disposed || epoch != sessionEpoch) return;
+            if (RegExp(r'^\d+$').hasMatch(event.id)) _noticeCursor = event.id;
+            if (event.type == 'notifications' &&
+                jsonRows(event.data['items']).isNotEmpty &&
+                notificationsEnabled) {
+              unawaited(
+                refreshNotifications(
+                  foreground: false,
+                ).catchError((Object _) {}),
+              );
+            }
+          },
+          onError: (Object _) => reconnect(),
+          onDone: reconnect,
+          cancelOnError: true,
+        );
   }
 
   Future<void> markNotificationsRead() async {
@@ -832,7 +995,10 @@ class AplicacionController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _noticesTimer?.cancel();
+    _eventsReconnect?.cancel();
+    unawaited(_noticeEvents?.cancel());
     api.dio.close();
     super.dispose();
   }

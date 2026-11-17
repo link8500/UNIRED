@@ -6,6 +6,7 @@ import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart'
 import 'package:unired/models/aplicacion/navegacion/navegador_aplicacion.dart';
 import 'package:unired/models/autenticacion/widgets/widgets_autenticacion.dart';
 import 'package:unired/shared/widgets/widgets_api.dart';
+import 'package:unired/models/autenticacion/widgets/botones_acceso_social.dart';
 
 /// Un único formulario autentica usuarios y personal autorizado.
 class FormularioAcceso extends StatefulWidget {
@@ -99,6 +100,7 @@ class _FormularioAccesoState extends State<FormularioAcceso> {
             );
           },
         ),
+        BotonesAccesoSocial(admin: widget.admin),
         const SizedBox(height: 12),
         const Text(
           'Tu sesión se mantiene mientras la aplicación está abierta.',

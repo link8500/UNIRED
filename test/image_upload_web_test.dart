@@ -1,5 +1,5 @@
 import 'dart:typed_data';
-import 'dart:ui' as ui;
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -21,18 +21,11 @@ void main() {
   Future<Uint8List?>? editing;
   setUp(() async {
     editing = null;
-    final recorder = ui.PictureRecorder();
-    Canvas(recorder).drawRect(
-      const Rect.fromLTWH(0, 0, 800, 400),
-      Paint()..color = Colors.blue,
+    // Un PNG real evita pedir a CanvasKit un fotograma antes de abrir la
+    // primera ventana de prueba. El editor sigue usando la decodificación real.
+    photo = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAIAAAAt/+nTAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAXElEQVRYhe2SwQkAQRCDbNoir6st4h4yELAAIwG/25AbuAHkFd2FuAu5gRtAXtFdiLuQG7gB5BXdhbgLuYEbQF7RXYi7kBu4AeQV3YW4C7mBG0Be0V2Iu5Ab/OMB1jHwiAuu4XYAAAAASUVORK5CYII=',
     );
-    final picture = recorder.endRecording();
-    final image = await picture.toImage(800, 400);
-    photo = (await image.toByteData(
-      format: ui.ImageByteFormat.png,
-    ))!.buffer.asUint8List();
-    image.dispose();
-    picture.dispose();
     adapter = TestAdapter(
       (_) async => TestReply({
         'id': '31',
@@ -42,7 +35,10 @@ void main() {
     );
     service =
         AplicacionController(
-            client: ClienteApi(dio: Dio()..httpClientAdapter = adapter),
+            client: ClienteApi(
+              enableLiveEvents: false,
+              dio: Dio()..httpClientAdapter = adapter,
+            ),
           )
           ..currentUser = const UsuarioAplicacion(
             id: '1',
@@ -63,7 +59,10 @@ void main() {
     if (realApi) {
       service.dispose();
       service = AplicacionController(
-        client: ClienteApi(baseUrl: const String.fromEnvironment('baseUrl')),
+        client: ClienteApi(
+          enableLiveEvents: false,
+          baseUrl: const String.fromEnvironment('baseUrl'),
+        ),
       );
       AplicacionController.replaceInstanceForTesting(service);
       await t.runAsync(
@@ -154,7 +153,7 @@ void main() {
   });
 
   testWidgets(
-    'Chrome + NestJS + PostgreSQL: PNG ajustado, escaneado y vinculado',
+    'Chrome + NestJS + PostgreSQL: PNG ajustado, verificado y vinculado',
     (t) async {
       await open(t, realApi: true);
       final file = await exportAndUpload(t);

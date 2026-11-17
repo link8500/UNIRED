@@ -112,6 +112,10 @@ class _EditorPublicacionState extends State<EditorPublicacion> {
     widget.initial['tipoPrecio'],
     widget.product?.priceType ?? 'fijo',
   );
+  late String _publicationType = textValue(
+    widget.initial['tipoPublicacion'],
+    'venta',
+  );
   late String _condition = textValue(
     widget.initial['condicion'],
     switch (widget.product?.condition) {
@@ -247,7 +251,7 @@ class _EditorPublicacionState extends State<EditorPublicacion> {
     'goals': ('Estudiantes previstos', Icons.groups_outlined),
     'media': ('Imagen del curso', Icons.image_outlined),
     'curriculum': ('Contenido y alumnos', Icons.view_agenda_outlined),
-    'price': ('Precio y ofertas', Icons.sell_outlined),
+    'price': ('Precio automático', Icons.sell_outlined),
     'review': ('Revisar y publicar', Icons.fact_check_outlined),
   };
   late String _section = widget.startWithReview
@@ -258,7 +262,6 @@ class _EditorPublicacionState extends State<EditorPublicacion> {
   String? _resumeSection;
   bool _saving = false;
   bool _editingContent = false;
-  late bool _paidCourse = _price > 0;
   Json get _courseMetadata => _courseData ?? widget.initial;
   late int _marketStep = widget.startWithReview ? 1 : 0;
   bool _confirmed = false, _mobilePreview = false;
@@ -299,11 +302,25 @@ class _EditorPublicacionState extends State<EditorPublicacion> {
       text: textValue(jsonObject(widget.initial['atributos'])[key]),
     ),
   );
-  double get _price =>
-      double.tryParse(_text('precioBase').replaceAll(',', '.')) ?? 0;
-  double get _discount =>
-      double.tryParse(_text('descuentoPorcentaje').replaceAll(',', '.')) ?? 0;
-  String get _displayPrice => !widget.isTutorial && _priceType == 'a_consultar'
+  double get _price => widget.isTutorial
+      ? double.tryParse(
+              textValue(
+                jsonObject(_courseMetadata['cotizacion'])['total'],
+                textValue(_courseMetadata['precioBase'], '0'),
+              ),
+            ) ??
+            0
+      : double.tryParse(_text('precioBase').replaceAll(',', '.')) ?? 0;
+  double get _discount => widget.isTutorial
+      ? 0
+      : double.tryParse(_text('descuentoPorcentaje').replaceAll(',', '.')) ?? 0;
+  String get _displayPrice =>
+      widget.isTutorial &&
+          (jsonObject(_courseMetadata['cotizacion'])['pendienteContenido'] ==
+                  true ||
+              _workingId == null)
+      ? 'Pendiente de preparar el contenido'
+      : !widget.isTutorial && _priceType == 'a_consultar'
       ? 'Consultar precio'
       : (!widget.isTutorial && _priceType == 'gratis') ||
             widget.isTutorial && _price == 0
@@ -324,7 +341,6 @@ class _EditorPublicacionState extends State<EditorPublicacion> {
       _text('descripcion').isNotEmpty &&
       _category.isNotEmpty &&
       (widget.isTutorial ? _workingId != null : _images.isNotEmpty) &&
-      (!widget.isTutorial || !_paidCourse || _price > 0) &&
       (widget.isTutorial ||
           ['gratis', 'a_consultar'].contains(_priceType) ||
           _price > 0) &&
@@ -350,7 +366,9 @@ class _EditorPublicacionState extends State<EditorPublicacion> {
             : true) &&
         (_needsSession ? _preparation['tieneSesionFutura'] == true : true) &&
         _workingId != null,
-    'price': !_paidCourse || _price > 0,
+    'price':
+        _workingId != null &&
+        jsonObject(_courseMetadata['cotizacion'])['pendienteContenido'] != true,
   };
 
   Future<void> _chooseSection(String key, {PestanaGestionCurso? tab}) async {
@@ -585,10 +603,6 @@ class _EditorPublicacionState extends State<EditorPublicacion> {
           );
   }
 
-  Widget _priceFields() => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [_moneyFields(), const SizedBox(height: 16), _discountField()],
-  );
   Widget _marketLocation() {
     final city = _text('ciudad');
     return InputDecorator(
@@ -672,6 +686,17 @@ class _EditorPublicacionState extends State<EditorPublicacion> {
         ),
         children: [
           const SizedBox(height: 10),
+          _select(
+            'Tipo de publicación',
+            _publicationType,
+            const {
+              'venta': 'Quiero vender',
+              'compra': 'Estoy buscando comprar',
+              'intercambio': 'Quiero intercambiar',
+            },
+            (value) => _publicationType = value,
+          ),
+          const SizedBox(height: 13),
           _select('Tipo de precio', _priceType, const {
             'fijo': 'Precio fijo',
             'negociable': 'Negociable',
@@ -1115,43 +1140,28 @@ class _EditorPublicacionState extends State<EditorPublicacion> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _heading(
-          'Precio y promoción',
-          'Elige si tu tutoría será gratuita o de pago y revisa el importe final.',
+          'Precio calculado por UniRed',
+          'El importe utiliza las tarifas del área y la duración de tu contenido publicado. No necesitas introducir un precio.',
         ),
-        Wrap(
-          spacing: 12,
-          runSpacing: 10,
-          children: [
-            ChoiceChip(
-              label: const Text('Gratuita'),
-              selected: !_paidCourse,
-              onSelected: (_) => setState(() {
-                _paidCourse = false;
-                _fields['precioBase']!.text = '0.00';
-                _fields['descuentoPorcentaje']!.text = '0';
-                _confirmed = false;
-              }),
-            ),
-            ChoiceChip(
-              label: const Text('De pago'),
-              selected: _paidCourse,
-              onSelected: (_) => setState(() {
-                _paidCourse = true;
-                if (_price == 0) _fields['precioBase']!.clear();
-                _confirmed = false;
-              }),
-            ),
-          ],
+        const NotaEditorCurso(
+          'El video aporta su duración verificada, el texto se estima por tiempo de lectura y las clases en vivo aportan su duración programada. Las tarifas las administra UniRed.',
         ),
-        const SizedBox(height: 22),
-        if (_paidCourse)
-          _priceFields()
-        else
-          const NotaEditorCurso(
-            'El curso no tiene costo. El estudiante enviará una solicitud y tú decidirás cuándo habilitar su acceso al material.',
+        const SizedBox(height: 20),
+        if (_courseMetadata['cotizacion'] is Map) ...[
+          InformacionAdmin(
+            'Duración para el cálculo',
+            '${jsonObject(_courseMetadata['cotizacion'])['duracionMinutos']} minutos',
           ),
-        const SizedBox(height: 25),
-        InformacionAdmin('Precio final', _displayPrice),
+          InformacionAdmin(
+            'Tarifa por minuto',
+            'C\$ ${jsonObject(_courseMetadata['cotizacion'])['precioMinuto']}',
+          ),
+        ],
+        InformacionAdmin('Precio del curso', _displayPrice),
+        const SizedBox(height: 16),
+        const NotaEditorCurso(
+          'Los importes son de demostración. El estudiante debe solicitar acceso y tú aceptarlo antes de abrir el material. Al publicar, el servidor vuelve a calcular el precio.',
+        ),
       ],
     ),
     'curriculum' =>
@@ -1625,23 +1635,10 @@ class _EditorPublicacionState extends State<EditorPublicacion> {
     final discount = double.tryParse(
       _text('descuentoPorcentaje').replaceAll(',', '.'),
     );
-    if (widget.isTutorial &&
-        (price == null ||
-            !price.isFinite ||
-            price < 0 ||
-            discount == null ||
-            !discount.isFinite ||
-            discount < 0 ||
-            (_paidCourse && price <= 0))) {
-      _chooseSection('price');
-      throw const ErrorApi(
-        'Indica un precio válido o selecciona la opción Gratuita.',
-      );
-    }
     final amount = price ?? 0;
     final reduction = discount ?? 0;
     final noPrice =
-        !widget.isTutorial && ['gratis', 'a_consultar'].contains(_priceType);
+        widget.isTutorial || ['gratis', 'a_consultar'].contains(_priceType);
     if (!noPrice && (reduction > 90 || (reduction > 0 && amount == 0))) {
       if (widget.isTutorial) _chooseSection('price');
       throw const ErrorApi(
@@ -1656,12 +1653,14 @@ class _EditorPublicacionState extends State<EditorPublicacion> {
     final data = <String, Object?>{
       'titulo': _text('titulo'),
       'descripcion': _text('descripcion'),
-      'precioBase': !widget.isTutorial && _priceType == 'a_consultar'
-          ? null
-          : noPrice
-          ? '0.00'
-          : amount.toStringAsFixed(2),
-      'descuentoPorcentaje': noPrice ? '0.00' : reduction.toStringAsFixed(2),
+      if (!widget.isTutorial)
+        'precioBase': !widget.isTutorial && _priceType == 'a_consultar'
+            ? null
+            : noPrice
+            ? '0.00'
+            : amount.toStringAsFixed(2),
+      if (!widget.isTutorial)
+        'descuentoPorcentaje': noPrice ? '0.00' : reduction.toStringAsFixed(2),
       'moneda': _currency,
       if (_workingId == null)
         (widget.isTutorial ? 'areaId' : 'categoriaId'): int.parse(_category),
@@ -1679,6 +1678,7 @@ class _EditorPublicacionState extends State<EditorPublicacion> {
           'requisitos',
         ).split('\n').map((v) => v.trim()).where((v) => v.isNotEmpty).toList(),
       } else ...{
+        'tipoPublicacion': _publicationType,
         'tipoPrecio': _priceType,
         'condicion': _condition,
         'ciudad': _text('ciudad').isEmpty ? null : _text('ciudad'),

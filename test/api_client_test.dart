@@ -12,15 +12,76 @@ import 'support/test_adapter.dart';
 ClienteApi client(TestAdapter adapter) {
   final dio = Dio()..httpClientAdapter = adapter;
   return ClienteApi(
+    enableLiveEvents: false,
     dio: dio,
     baseUrl: 'http://127.0.0.1:3000/api/v1',
     progreso: ProgresoNavegacionController.instance,
+    retryDelay: Duration.zero,
   );
 }
 
 Json page() => {'items': <Object>[], 'total': 0, 'page': 1, 'limit': 50};
 
 void main() {
+  test(
+    'una consulta se recupera de un arranque temporal sin recargar',
+    () async {
+      var calls = 0;
+      final recovering = TestAdapter((_) async {
+        if (++calls == 1) {
+          return TestReply({'message': 'Starting'}, status: 503);
+        }
+        return TestReply({'id': 1});
+      });
+      expect((await client(recovering).object('/courses'))['id'], 1);
+      expect(recovering.requests.length, 2);
+    },
+  );
+  test(
+    'un error transitorio no repite una publicación ni un multipart',
+    () async {
+      for (final data in [
+        <String, Object>{'titulo': 'Libro'},
+        FormData.fromMap({'proposito': 'avatar'}),
+      ]) {
+        final adapter = TestAdapter(
+          (_) async => TestReply({'message': 'Starting'}, status: 503),
+        );
+        await expectLater(
+          client(adapter).request('/files', method: 'POST', data: data),
+          throwsA(isA<ErrorApi>()),
+        );
+        expect(adapter.requests.length, 1);
+      }
+    },
+  );
+  test('los errores de validación y permisos no se reintentan', () async {
+    for (final status in [400, 403, 404, 409, 422, 429]) {
+      final adapter = TestAdapter(
+        (_) async => TestReply({'message': 'Rechazado'}, status: status),
+      );
+      await expectLater(
+        client(adapter).object('/courses'),
+        throwsA(isA<ErrorApi>()),
+      );
+      expect(adapter.requests.length, 1);
+    }
+  });
+  test(
+    'una API que continúa caída termina el reintento y conserva el error',
+    () async {
+      final adapter = TestAdapter(
+        (_) async => TestReply({'message': 'No disponible'}, status: 503),
+      );
+      await expectLater(
+        client(adapter).object('/courses'),
+        throwsA(
+          isA<ErrorApi>().having((e) => e.message, 'message', 'No disponible'),
+        ),
+      );
+      expect(adapter.requests.length, 2);
+    },
+  );
   test('los límites evitan videos enormes en el multipart del navegador', () {
     expect(
       LimitesArchivos.forSelection('video_leccion', 'video.mp4', web: true),

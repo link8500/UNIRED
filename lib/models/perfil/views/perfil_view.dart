@@ -106,65 +106,110 @@ class PerfilView extends StatelessWidget {
     );
   }
 
-  Widget _sidebar(BuildContext context, SeccionCuenta section) =>
-      SuperficieAdmin(
-        padding: const EdgeInsets.all(10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(12, 8, 12, 12),
-              child: Text(
-                'Mi cuenta',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-              ),
-            ),
-            for (final item in SeccionCuenta.values.where(
-              (item) =>
-                  item != SeccionCuenta.edit && item != SeccionCuenta.security,
-            ))
-              ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                dense: true,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                selected:
-                    item == section ||
-                    item == SeccionCuenta.profile &&
-                        section == SeccionCuenta.edit ||
-                    item == SeccionCuenta.preferences &&
-                        section == SeccionCuenta.security,
-                selectedTileColor: ColoresAplicacion.surfaceBlue,
-                selectedColor: ColoresAplicacion.blue,
-                leading: Icon(item.icon, size: 19),
-                title: Text(item.label),
-                onTap: () => _open(context, item),
-              ),
-            const Divider(),
-            ListTile(
-              dense: true,
-              leading: const Icon(Icons.forum_outlined, size: 19),
-              title: const Text('Mis mensajes'),
-              onTap: () => NavegadorAplicacion.go(
-                context,
-                asAdmin
-                    ? RutasAplicacion.adminMessages
-                    : RutasAplicacion.messages,
-              ),
-            ),
-            ListTile(
-              dense: true,
-              leading: const Icon(Icons.folder_outlined, size: 19),
-              title: const Text('Mis archivos'),
-              onTap: () => NavegadorAplicacion.go(
-                context,
-                asAdmin ? RutasAplicacion.adminFiles : RutasAplicacion.files,
-              ),
-            ),
-          ],
+  Widget _sidebar(
+    BuildContext context,
+    SeccionCuenta section,
+  ) => SuperficieAdmin(
+    padding: const EdgeInsets.all(10),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(12, 8, 12, 12),
+          child: Text(
+            'Mi cuenta',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+          ),
         ),
-      );
+        for (final item in SeccionCuenta.values.where(
+          (item) =>
+              item != SeccionCuenta.edit && item != SeccionCuenta.security,
+        ))
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+            dense: true,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(9),
+            ),
+            selected:
+                item == section ||
+                item == SeccionCuenta.profile &&
+                    section == SeccionCuenta.edit ||
+                item == SeccionCuenta.preferences &&
+                    section == SeccionCuenta.security,
+            selectedTileColor: ColoresAplicacion.surfaceBlue,
+            selectedColor: ColoresAplicacion.blue,
+            leading: Icon(item.icon, size: 19),
+            title: Text(item.label),
+            onTap: () => _open(context, item),
+          ),
+        const Divider(),
+        ListTile(
+          dense: true,
+          leading: const Icon(Icons.handshake_outlined, size: 19),
+          title: const Text('Mis ofertas'),
+          onTap: () => NavegadorAplicacion.go(
+            context,
+            asAdmin ? RutasAplicacion.adminOffers : RutasAplicacion.offers,
+          ),
+        ),
+        ListTile(
+          dense: true,
+          leading: const Icon(Icons.school_outlined, size: 19),
+          title: const Text('Solicitudes de tutoría'),
+          onTap: () => NavegadorAplicacion.go(
+            context,
+            asAdmin
+                ? RutasAplicacion.adminTutoringRequests
+                : RutasAplicacion.tutoringRequests,
+          ),
+        ),
+        ...[
+          ListTile(
+            dense: true,
+            leading: const Icon(Icons.business_outlined, size: 19),
+            title: const Text('Mis empresas'),
+            onTap: () => NavegadorAplicacion.go(
+              context,
+              asAdmin
+                  ? RutasAplicacion.adminBusiness
+                  : RutasAplicacion.business,
+            ),
+          ),
+          ListTile(
+            dense: true,
+            leading: const Icon(
+              Icons.account_balance_wallet_outlined,
+              size: 19,
+            ),
+            title: const Text('Mi cartera y compras'),
+            onTap: () => NavegadorAplicacion.go(
+              context,
+              asAdmin ? RutasAplicacion.adminWallet : RutasAplicacion.wallet,
+            ),
+          ),
+        ],
+        ListTile(
+          dense: true,
+          leading: const Icon(Icons.forum_outlined, size: 19),
+          title: const Text('Mis mensajes'),
+          onTap: () => NavegadorAplicacion.go(
+            context,
+            asAdmin ? RutasAplicacion.adminMessages : RutasAplicacion.messages,
+          ),
+        ),
+        ListTile(
+          dense: true,
+          leading: const Icon(Icons.folder_outlined, size: 19),
+          title: const Text('Mis archivos'),
+          onTap: () => NavegadorAplicacion.go(
+            context,
+            asAdmin ? RutasAplicacion.adminFiles : RutasAplicacion.files,
+          ),
+        ),
+      ],
+    ),
+  );
 
   Widget _panel(
     BuildContext context,
@@ -245,7 +290,7 @@ class PerfilView extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        if (!asAdmin) ...[
+        ...[
           Text(section.label, style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 16),
         ],

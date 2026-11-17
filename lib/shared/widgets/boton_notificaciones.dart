@@ -6,17 +6,26 @@ import 'package:flutter/material.dart';
 import 'package:unired/shared/widgets/widgets_api.dart';
 import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
 import 'package:unired/shared/temas/colores_aplicacion.dart';
+import 'package:unired/models/aplicacion/navegacion/navegador_aplicacion.dart';
+import 'package:unired/models/notificaciones/models/aviso_usuario.dart';
 
 /// Popover anclado a la campana: no bloquea ni abandona la página actual.
 /// Los avisos vienen de la API y son privados de la cuenta; se pueden marcar como leídos.
-class BotonNotificaciones extends StatelessWidget {
+class BotonNotificaciones extends StatefulWidget {
   const BotonNotificaciones({super.key});
+  @override
+  State<BotonNotificaciones> createState() => _BotonNotificacionesState();
+}
+
+class _BotonNotificacionesState extends State<BotonNotificaciones> {
+  final _menu = MenuController();
   @override
   Widget build(BuildContext context) {
     final store = AplicacionController.instance;
     return AnimatedBuilder(
       animation: store,
       builder: (context, _) => MenuAnchor(
+        controller: _menu,
         alignmentOffset: const Offset(0, 8),
         style: MenuStyle(
           backgroundColor: const WidgetStatePropertyAll(Colors.white),
@@ -109,6 +118,24 @@ class BotonNotificaciones extends StatelessWidget {
                                                 fontSize: 11,
                                               ),
                                             ),
+                                            if (_destination(notice)
+                                                case final String route)
+                                              TextButton.icon(
+                                                onPressed: () {
+                                                  _menu.close();
+                                                  NavegadorAplicacion.go(
+                                                    context,
+                                                    route,
+                                                  );
+                                                },
+                                                icon: const Icon(
+                                                  Icons.arrow_forward,
+                                                  size: 14,
+                                                ),
+                                                label: const Text(
+                                                  'Ver detalles',
+                                                ),
+                                              ),
                                           ],
                                         ),
                                       ),
@@ -148,5 +175,38 @@ class BotonNotificaciones extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String? _destination(AvisoUsuario notice) {
+    final data = notice.data;
+    final admin = (ModalRoute.of(context)?.settings.name ?? '').startsWith(
+      '/admin/',
+    );
+    if (notice.type == 'oferta') {
+      return admin ? RutasAplicacion.adminOffers : RutasAplicacion.offers;
+    }
+    if (notice.type == 'solicitud_tutoria') {
+      return Uri(
+        path: admin
+            ? RutasAplicacion.adminTutoringRequests
+            : RutasAplicacion.tutoringRequests,
+        queryParameters: {
+          if (data['vista'] != null) 'view': data['vista'].toString(),
+        },
+      ).toString();
+    }
+    if (data['conversacionId'] != null) {
+      return '${admin ? RutasAplicacion.adminMessages : RutasAplicacion.messages}?id=${data['conversacionId']}';
+    }
+    if (data['empresaId'] != null) {
+      return '${admin ? RutasAplicacion.adminBusiness : RutasAplicacion.business}?id=${data['empresaId']}';
+    }
+    if (data['tutoriaId'] != null) {
+      return '${RutasAplicacion.course}?id=${data['tutoriaId']}';
+    }
+    if (data['anuncioId'] != null) {
+      return '${RutasAplicacion.listing}?id=${data['anuncioId']}';
+    }
+    return null;
   }
 }

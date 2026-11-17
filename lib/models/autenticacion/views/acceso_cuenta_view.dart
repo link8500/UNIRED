@@ -39,11 +39,15 @@ class _AccesoCuentaViewState extends State<AccesoCuentaView> {
           style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 14),
-        const Text(
-          'Este formulario se conserva para cuando la verificación por correo está activada. En desarrollo, el token está en el buzón privado .local-mails del backend.',
+        Text(
+          widget.recovery
+              ? (widget.token.isEmpty
+                    ? 'Solicita un enlace para recuperar tu cuenta. También puedes pegar el código recibido por correo.'
+                    : 'El enlace ya contiene tu código. Escribe una nueva contraseña para recuperar el acceso.')
+              : 'Abre el enlace de verificación de tu correo o pega aquí el código recibido.',
         ),
         const SizedBox(height: 20),
-        if (widget.recovery) ...[
+        if (widget.recovery && widget.token.isEmpty) ...[
           TextField(
             controller: _email,
             keyboardType: TextInputType.emailAddress,

@@ -2,6 +2,9 @@
 // Muestra la información descriptiva y las características del curso.
 
 import 'package:flutter/material.dart';
+import 'package:unired/models/comunidad/widgets/boton_denuncia.dart';
+import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
+import 'package:unired/models/comercial/widgets/boton_destacar.dart';
 import 'package:unired/core/dominio/datos_api.dart';
 import 'package:unired/models/aplicacion/navegacion/navegador_aplicacion.dart';
 import 'package:unired/models/tutorias/models/tutoria.dart';
@@ -85,6 +88,15 @@ class PresentacionCurso extends StatelessWidget {
         ),
         const SizedBox(height: 18),
         MetricasCurso(item: item, color: Colors.white70),
+        if (AplicacionController.instance.currentUser?.id == item.mentorId &&
+            row['estado'] == 'publicada')
+          BotonDestacar(id: item.id, tutorial: true, color: Colors.white70),
+        if (AplicacionController.instance.currentUser?.id != item.mentorId)
+          BotonDenuncia(
+            type: 'curso',
+            resourceId: item.id,
+            color: Colors.white70,
+          ),
         const SizedBox(height: 18),
         Wrap(
           spacing: 8,

@@ -17,7 +17,9 @@ void main() {
         (_) async =>
             TestReply({'items': [], 'total': 0, 'page': 1, 'limit': 50}),
       );
-    service = AplicacionController(client: ClienteApi(dio: dio));
+    service = AplicacionController(
+      client: ClienteApi(enableLiveEvents: false, dio: dio),
+    );
     AplicacionController.replaceInstanceForTesting(service);
   });
   tearDown(() => service.dispose());
@@ -33,7 +35,10 @@ void main() {
         );
         service.dispose();
         service = AplicacionController(
-          client: ClienteApi(dio: Dio()..httpClientAdapter = adapter),
+          client: ClienteApi(
+            enableLiveEvents: false,
+            dio: Dio()..httpClientAdapter = adapter,
+          ),
         );
         AplicacionController.replaceInstanceForTesting(service);
         await tester.pumpWidget(
@@ -50,6 +55,15 @@ void main() {
         await tester.enterText(fields.at(1), 'registro@example.test');
         await tester.enterText(fields.at(2), 'Prueba-registro-2026!');
         await tester.ensureVisible(
+          find.widgetWithText(FilledButton, 'Continuar'),
+        );
+        await tester.tap(find.widgetWithText(FilledButton, 'Continuar'));
+        await tester.pumpAndSettle();
+        final academic = find.byType(TextFormField);
+        await tester.enterText(academic.at(0), 'Universidad de prueba');
+        await tester.enterText(academic.at(1), 'Ingeniería de sistemas');
+        await tester.enterText(academic.at(2), '88881234');
+        await tester.ensureVisible(
           find.widgetWithText(FilledButton, 'Crear cuenta'),
         );
         await tester.tap(find.widgetWithText(FilledButton, 'Crear cuenta'));
@@ -58,6 +72,14 @@ void main() {
         );
         await tester.pump(const Duration(milliseconds: 300));
         expect(find.text('Cuenta creada'), findsOneWidget);
+        final sent =
+            adapter.requests
+                    .singleWhere((request) => request.path == '/auth/register')
+                    .data
+                as Map;
+        expect(sent['universidad'], 'Universidad de prueba');
+        expect(sent['carrera'], 'Ingeniería de sistemas');
+        expect(sent['telefonoPublico'], false);
         await tester.tap(find.text('Entendido'));
         await tester.pumpAndSettle();
         expect(
@@ -103,7 +125,10 @@ void main() {
       );
       service.dispose();
       service = AplicacionController(
-        client: ClienteApi(dio: Dio()..httpClientAdapter = adapter),
+        client: ClienteApi(
+          enableLiveEvents: false,
+          dio: Dio()..httpClientAdapter = adapter,
+        ),
       );
       service.currentUser = const UsuarioAplicacion(
         id: '1',
@@ -174,7 +199,7 @@ void main() {
     expect(find.text('Usuarios'), findsNothing);
     expect(tester.takeException(), isNull);
   });
-  testWidgets('el acceso no ofrece Google ni credenciales simuladas', (
+  testWidgets('el acceso conserva correo y contraseña sin credenciales simuladas', (
     tester,
   ) async {
     await tester.pumpWidget(

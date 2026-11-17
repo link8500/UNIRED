@@ -52,6 +52,10 @@ class ModulosAdministracion {
   static const support = [
     PestanaModuloAdmin('Casos abiertos', RutasAplicacion.adminSupport),
     PestanaModuloAdmin(
+      'Valoraciones entre usuarios',
+      RutasAplicacion.adminPeerReviews,
+    ),
+    PestanaModuloAdmin(
       'En revisión',
       '${RutasAplicacion.adminSupport}?state=en_revision',
     ),

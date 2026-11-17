@@ -2,6 +2,7 @@
 // Reúne las operaciones relacionadas con la contraseña y la seguridad de la cuenta.
 
 import 'package:flutter/material.dart';
+import 'package:unired/models/perfil/widgets/cuentas_vinculadas.dart';
 import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
 import 'package:unired/models/aplicacion/navegacion/navegador_aplicacion.dart';
 import 'package:unired/core/utilidades/formato_presentacion.dart';
@@ -41,82 +42,115 @@ class _SeguridadCuentaState extends State<SeguridadCuenta> {
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 16),
-        TextField(
-          controller: _password,
-          obscureText: true,
-          decoration: const InputDecoration(labelText: 'Contraseña actual'),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _newPassword,
-          obscureText: true,
-          decoration: const InputDecoration(
-            labelText: 'Nueva contraseña (mínimo 12 caracteres)',
-          ),
-        ),
-        const SizedBox(height: 12),
-        BotonAccionApi(
-          label: 'Cambiar contraseña',
-          action: () async {
-            final navigationContext = Navigator.of(context).context;
-            await AplicacionController.instance.api.object(
-              '/me/change-password',
-              method: 'POST',
-              data: {
-                'passwordActual': _password.text,
-                'passwordNueva': _newPassword.text,
-              },
-            );
-            await AplicacionController.instance.logout();
-            if (navigationContext.mounted) {
-              NavegadorAplicacion.go(
-                navigationContext,
-                widget.asAdmin
-                    ? RutasAplicacion.adminLogin
-                    : RutasAplicacion.login,
-              );
-            }
-          },
-        ),
+        CuentasVinculadas(asAdmin: widget.asAdmin),
         const Divider(height: 32),
-        TextField(
-          controller: _email,
-          keyboardType: TextInputType.emailAddress,
-          decoration: const InputDecoration(
-            labelText: 'Nuevo correo electrónico',
+        if (AplicacionController.instance.currentUser?.hasPassword !=
+            false) ...[
+          TextField(
+            controller: _password,
+            obscureText: true,
+            decoration: const InputDecoration(labelText: 'Contraseña actual'),
           ),
-        ),
-        const SizedBox(height: 12),
-        BotonAccionApi(
-          label: 'Cambiar correo',
-          action: () async {
-            final navigationContext = Navigator.of(context).context;
-            final result = await AplicacionController.instance.api.object(
-              '/me/change-email',
-              method: 'POST',
-              data: {
-                'email': _email.text.trim(),
-                'passwordActual': _password.text,
-              },
-            );
-            await AplicacionController.instance.logout();
-            if (navigationContext.mounted) {
-              NavegadorAplicacion.go(
-                navigationContext,
-                result['verificacionEmailRequerida'] == false
-                    ? widget.asAdmin
-                          ? RutasAplicacion.adminLogin
-                          : RutasAplicacion.login
-                    : RutasAplicacion.verifyEmail,
+          const SizedBox(height: 12),
+          TextField(
+            controller: _newPassword,
+            obscureText: true,
+            decoration: const InputDecoration(
+              labelText: 'Nueva contraseña (mínimo 12 caracteres)',
+            ),
+          ),
+          const SizedBox(height: 12),
+          BotonAccionApi(
+            label: 'Cambiar contraseña',
+            action: () async {
+              final navigationContext = Navigator.of(context).context;
+              await AplicacionController.instance.api.object(
+                '/me/change-password',
+                method: 'POST',
+                data: {
+                  'passwordActual': _password.text,
+                  'passwordNueva': _newPassword.text,
+                },
               );
-            }
-          },
-        ),
-        const Divider(height: 32),
+              await AplicacionController.instance.logout();
+              if (navigationContext.mounted) {
+                NavegadorAplicacion.go(
+                  navigationContext,
+                  widget.asAdmin
+                      ? RutasAplicacion.adminLogin
+                      : RutasAplicacion.login,
+                );
+              }
+            },
+          ),
+          const Divider(height: 32),
+          TextField(
+            controller: _email,
+            keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(
+              labelText: 'Nuevo correo electrónico',
+            ),
+          ),
+          const SizedBox(height: 12),
+          BotonAccionApi(
+            label: 'Cambiar correo',
+            action: () async {
+              final navigationContext = Navigator.of(context).context;
+              final result = await AplicacionController.instance.api.object(
+                '/me/change-email',
+                method: 'POST',
+                data: {
+                  'email': _email.text.trim(),
+                  'passwordActual': _password.text,
+                },
+              );
+              await AplicacionController.instance.logout();
+              if (navigationContext.mounted) {
+                NavegadorAplicacion.go(
+                  navigationContext,
+                  result['verificacionEmailRequerida'] == false
+                      ? widget.asAdmin
+                            ? RutasAplicacion.adminLogin
+                            : RutasAplicacion.login
+                      : RutasAplicacion.verifyEmail,
+                );
+              }
+            },
+          ),
+          const Divider(height: 32),
+        ] else ...[
+          const Text(
+            'Tu cuenta utiliza acceso social. Si quieres entrar también con correo y contraseña, solicita un enlace para crearla.',
+          ),
+          const SizedBox(height: 12),
+          BotonAccionApi(
+            label: 'Crear una contraseña',
+            icon: Icons.password_outlined,
+            success:
+                'Se solicitó un enlace para tu correo. Ábrelo para crear tu contraseña.',
+            action: () async {
+              await AplicacionController.instance.api.object(
+                '/auth/forgot-password',
+                method: 'POST',
+                authenticated: false,
+                data: {
+                  'email': AplicacionController.instance.currentUser!.email,
+                },
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Para cambiar tu correo, crea primero una contraseña.',
+            style: TextStyle(fontSize: 12),
+          ),
+          const Divider(height: 32),
+        ],
         const Text(
           'Mis sesiones',
           style: TextStyle(fontWeight: FontWeight.w800),
         ),
+        const SizedBox(height: 12),
         ColeccionApi(
           key: ValueKey(_sessions),
           path: '/me/sessions',

@@ -2,6 +2,12 @@
 // Declara rutas, crea vistas, comprueba accesos y administra la navegación y la conservación de pantallas.
 
 import 'package:flutter/material.dart';
+import 'package:unired/models/autenticacion/views/retorno_social_view.dart';
+import 'package:unired/models/comercial/views/cartera_view.dart';
+import 'package:unired/models/comercial/views/empresas_view.dart';
+import 'package:unired/models/comercial/views/comercial_admin_view.dart';
+import 'package:unired/models/interacciones/views/interacciones_view.dart';
+import 'package:unired/models/comunidad/views/busqueda_view.dart';
 import 'package:unired/models/autenticacion/views/acceso_cuenta_view.dart';
 import 'package:unired/models/market/views/detalle_anuncio_view.dart';
 import 'package:unired/models/mensajeria/views/mensajes_view.dart';
@@ -34,6 +40,18 @@ import 'package:unired/models/usuarios/views/usuarios_view.dart';
 
 /// Rutas declaradas en un solo sitio para evitar strings repetidos.
 class RutasAplicacion {
+  static const socialCallback = '/auth/social';
+  static const search = '/search';
+  static const adminPeerReviews = '/admin/support/peer-reviews';
+  static const adminOffers = '/admin/profile/offers';
+  static const adminTutoringRequests = '/admin/profile/tutoring-requests';
+  static const adminWallet = '/admin/profile/wallet';
+  static const adminBusiness = '/admin/profile/business';
+  static const offers = '/profile/offers';
+  static const tutoringRequests = '/profile/tutoring-requests';
+  static const wallet = '/profile/wallet';
+  static const business = '/profile/business';
+  static const adminCommerce = '/admin/commerce';
   static const home = '/home';
   static const login = '/login';
   static const register = '/register';
@@ -168,6 +186,38 @@ class NavegadorAplicacion {
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     final uri = Uri.tryParse(settings.name ?? RutasAplicacion.home);
     final page = switch (uri?.path) {
+      RutasAplicacion.socialCallback => RetornoSocialView(
+        code: uri?.queryParameters['codigo'] ?? '',
+        error: uri?.queryParameters['error'] ?? '',
+      ),
+      RutasAplicacion.search => const BusquedaView(),
+      RutasAplicacion.adminOffers => const InteraccionesView(asAdmin: true),
+      RutasAplicacion.adminTutoringRequests => InteraccionesView(
+        asAdmin: true,
+        tutorials: true,
+        initialTab:
+            {'disponibles': 1, 'impartidas': 2}[uri?.queryParameters['view']] ??
+            0,
+        startNew: uri?.queryParameters['new'] == '1',
+      ),
+      RutasAplicacion.adminWallet => const CarteraView(asAdmin: true),
+      RutasAplicacion.adminBusiness => EmpresasView(
+        asAdmin: true,
+        companyId: uri?.queryParameters['id'],
+      ),
+      RutasAplicacion.offers => const InteraccionesView(),
+      RutasAplicacion.tutoringRequests => InteraccionesView(
+        tutorials: true,
+        initialTab:
+            {'disponibles': 1, 'impartidas': 2}[uri?.queryParameters['view']] ??
+            0,
+        startNew: uri?.queryParameters['new'] == '1',
+      ),
+      RutasAplicacion.wallet => const CarteraView(),
+      RutasAplicacion.business => EmpresasView(
+        companyId: uri?.queryParameters['id'],
+      ),
+      RutasAplicacion.adminCommerce => const ComercialAdminView(),
       RutasAplicacion.login => const AccesoView(),
       RutasAplicacion.register => const RegistroView(),
       RutasAplicacion.verifyEmail => AccesoCuentaView(
@@ -226,6 +276,9 @@ class NavegadorAplicacion {
       ),
       RutasAplicacion.adminReviews => const EspacioGestionView(
         section: 'reviews',
+      ),
+      RutasAplicacion.adminPeerReviews => const EspacioGestionView(
+        section: 'peer-reviews',
       ),
       RutasAplicacion.adminMarketUpdates => const EspacioGestionView(
         section: 'market-updates',
@@ -358,6 +411,7 @@ class _RouteAccess extends StatelessWidget {
         RutasAplicacion.user,
         RutasAplicacion.adminCatalogs,
         RutasAplicacion.adminAudit,
+        RutasAplicacion.adminCommerce,
         RutasAplicacion.adminConversations,
         RutasAplicacion.adminCourseConversations,
         RutasAplicacion.adminMarketConversations,
@@ -372,6 +426,7 @@ class _RouteAccess extends StatelessWidget {
       }
       if (path.startsWith('/admin/training/') ||
           path == RutasAplicacion.adminMarketUpdates ||
+          path == RutasAplicacion.adminPeerReviews ||
           path == RutasAplicacion.adminSupport) {
         allowed = allowed && store.canModerate;
       }

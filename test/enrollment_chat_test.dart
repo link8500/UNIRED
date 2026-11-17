@@ -114,7 +114,10 @@ void main() {
     });
     service =
         AplicacionController(
-            client: ClienteApi(dio: Dio()..httpClientAdapter = adapter),
+            client: ClienteApi(
+              enableLiveEvents: false,
+              dio: Dio()..httpClientAdapter = adapter,
+            ),
           )
           ..currentUser = const UsuarioAplicacion(
             id: '3',
@@ -144,11 +147,12 @@ void main() {
       await t.pumpAndSettle();
       expect(find.text('Solicitud enviada'), findsOneWidget);
       expect(find.text('Abrir aula'), findsNothing);
-      expect(find.text('Conversar con el tutor'), findsOneWidget);
+      expect(find.text('Conversar con el tutor'), findsNothing);
       state = 'activa';
       await t.pump(const Duration(seconds: 8));
       await t.pumpAndSettle();
       expect(find.text('Abrir aula'), findsOneWidget);
+      expect(find.text('Conversar con el tutor'), findsOneWidget);
       expect(
         adapter.requests
             .where(

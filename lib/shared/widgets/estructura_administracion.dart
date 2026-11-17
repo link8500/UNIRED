@@ -137,6 +137,12 @@ class EstructuraAdministracion extends StatelessWidget {
         ],
         'GESTIÓN': [
           if (store.isAdministrator)
+            (
+              'Empresas y publicidad',
+              RutasAplicacion.adminCommerce,
+              Icons.business_outlined,
+            ),
+          if (store.isAdministrator)
             ('Usuarios', RutasAplicacion.user, Icons.people_outline),
           if (store.canReview)
             (

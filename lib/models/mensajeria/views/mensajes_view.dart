@@ -3,6 +3,7 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:unired/models/comunidad/widgets/boton_denuncia.dart';
 import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -73,7 +74,10 @@ class _MensajesViewState extends State<MensajesView> {
         foreground: false,
       );
       if (mounted && generation == _request && _id == id) {
-        setState(() => _selected = {...?_selected, ...row});
+        setState(() {
+          _selected = {...?_selected, ...row};
+          if (row['estado'] == 'cerrada') _messages = [];
+        });
       }
     } catch (e) {
       if (mounted && generation == _request) {
@@ -136,6 +140,11 @@ class _MensajesViewState extends State<MensajesView> {
     if (id == null || _syncing || !mounted) return;
     _syncing = true;
     try {
+      await _header(id);
+      if (_selected?['estado'] == 'cerrada' ||
+          _selected?['estado'] == 'bloqueada') {
+        return;
+      }
       final after = _messages.lastOrNull?['id'];
       var page = await _store.api.page(
         '/conversations/$id/messages',
@@ -621,7 +630,9 @@ class _MensajesViewState extends State<MensajesView> {
             ],
           ),
         ),
-        if (_selected != null && !(_details && inlineDetails))
+        if (_selected != null &&
+            _selected?['estado'] != 'cerrada' &&
+            !(_details && inlineDetails))
           VistaPreviaAsuntoChat(row: _selected!, onOpen: _openPublication),
         if (_details && inlineDetails)
           Expanded(child: _context())
@@ -631,7 +642,44 @@ class _MensajesViewState extends State<MensajesView> {
           Expanded(
             child: ColoredBox(
               color: const Color(0xFFF1F5FA),
-              child: _messages.isEmpty
+              child: _selected?['estado'] == 'cerrada'
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.task_alt_outlined, size: 36),
+                            const SizedBox(height: 14),
+                            const Text(
+                              'Esta interacción ha finalizado.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 19,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            const Text(
+                              'La conversación está cerrada. Puedes consultar el perfil del otro participante.',
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 18),
+                            OutlinedButton.icon(
+                              onPressed: () => NavegadorAplicacion.go(
+                                context,
+                                RutasAplicacion.memberProfile(
+                                  textValue(_selected?['interlocutorId']),
+                                ),
+                              ),
+                              icon: const Icon(Icons.person_outline),
+                              label: const Text('Ver perfil'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : _messages.isEmpty
                   ? const Center(
                       child: Text(
                         'Saluda y comienza la conversación.',
@@ -682,7 +730,9 @@ class _MensajesViewState extends State<MensajesView> {
                     ),
             ),
           ),
-          _composer(),
+          if (_selected?['estado'] != 'cerrada' &&
+              _selected?['estado'] != 'bloqueada')
+            _composer(),
         ],
       ],
     );
@@ -867,6 +917,15 @@ class _MensajesViewState extends State<MensajesView> {
               ),
             ],
             const SizedBox(height: 5),
+            if (!own && !deleted)
+              Align(
+                alignment: Alignment.centerRight,
+                child: BotonDenuncia(
+                  type: 'mensaje',
+                  resourceId: textValue(m['id']),
+                  iconOnly: true,
+                ),
+              ),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [

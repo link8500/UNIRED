@@ -9,10 +9,14 @@ class AvisoUsuario {
     required this.message,
     required this.ownerId,
     this.read = false,
+    this.type = '',
+    this.data = const {},
   });
   final String id;
   final String title;
   final String message;
   final String ownerId;
   final bool read;
+  final String type;
+  final Map<String, Object?> data;
 }

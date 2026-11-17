@@ -170,7 +170,9 @@ class _AcreditacionViewState extends State<AcreditacionView> {
                   PaginacionApi(
                     page: page,
                     load: (p) async {
-                      setState(() => _list = _load(page: p));
+                      setState(() {
+                        _list = _load(page: p);
+                      });
                     },
                   ),
                 ],

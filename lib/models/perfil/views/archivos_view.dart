@@ -61,8 +61,19 @@ class _ArchivosViewState extends State<ArchivosView> {
                               ),
                             ),
                             Text(
-                              '${textValue(file['proposito'])} · ${textValue(file['estado'])} · ${textValue(file['escaneo'])}',
+                              '${_purpose(file)} · ${file['estado'] == 'listo'
+                                  ? 'Listo para usar'
+                                  : file['estado'] == 'bloqueado'
+                                  ? 'No se pudo validar'
+                                  : 'Pendiente de preparación'}',
                             ),
+                            if (file['estado'] != 'listo')
+                              const Padding(
+                                padding: EdgeInsets.only(top: 8),
+                                child: Text(
+                                  'Este archivo sigue privado. Reintenta su preparación o selecciona otro archivo antes de asociarlo a una publicación.',
+                                ),
+                              ),
                             const SizedBox(height: 12),
                             Wrap(
                               spacing: 8,
@@ -70,6 +81,7 @@ class _ArchivosViewState extends State<ArchivosView> {
                               children: [
                                 BotonAccionApi(
                                   label: 'Abrir',
+                                  enabled: file['estado'] == 'listo',
                                   icon: Icons.open_in_new,
                                   action: () async {
                                     await launchUrl(
@@ -117,4 +129,16 @@ class _ArchivosViewState extends State<ArchivosView> {
       ),
     ),
   );
+  String _purpose(Json file) => switch (file['proposito']) {
+    'avatar' => 'Foto de perfil',
+    'banner_perfil' => 'Portada del perfil',
+    'imagen_anuncio' => 'Imagen del market o campaña',
+    'portada_curso' => 'Portada de tutoría',
+    'galeria_curso' => 'Galería de tutoría',
+    'evidencia_tutor' => 'Documento de acreditación',
+    'adjunto_chat' => 'Archivo compartido en chat',
+    'video_leccion' => 'Vídeo de una lección',
+    'recurso_curso' => 'Material del curso',
+    _ => 'Archivo personal',
+  };
 }

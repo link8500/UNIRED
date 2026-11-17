@@ -11,6 +11,7 @@ import 'package:unired/shared/widgets/widgets_api.dart';
 import 'package:unired/shared/widgets/coleccion_api.dart';
 import 'package:unired/shared/widgets/componentes_administracion.dart';
 import 'package:unired/shared/widgets/avisos_aplicacion.dart';
+import 'package:unired/models/interacciones/widgets/valorar_interaccion.dart';
 
 enum PestanaGestionCurso {
   curriculum('Plan de estudio'),
@@ -140,6 +141,12 @@ class _GestionCursoState extends State<GestionCurso> {
                           : '${textValue(student['estado'])} · ${textValue(student['completadas'])} lecciones',
                     ),
                     children: [
+                      if (student['estado'] == 'completada')
+                        BotonValorarInteraccion(
+                          path: '/me/enrollments/${student['id']}/peer-review',
+                          alreadyReviewed: student['resenaPropiaId'] != null,
+                          finished: _reloadStudents,
+                        ),
                       if (student['estado'] == 'solicitada') ...[
                         Align(
                           alignment: Alignment.centerLeft,

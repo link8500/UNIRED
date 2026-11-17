@@ -6,11 +6,20 @@ import 'package:dio/dio.dart';
 import 'package:unired/core/dominio/datos_api.dart';
 import 'package:unired/core/dominio/contratos/monitor_progreso.dart';
 import 'package:unired/core/dominio/contratos/repositorio_api.dart';
+import 'package:unired/core/dominio/evento_servidor.dart';
+import 'package:unired/core/datos/remoto/transporte_eventos.dart';
 
 /// Único lugar que conoce HTTP, JWT, renovación y errores del servidor.
 /// Los tokens permanecen en memoria: nunca en URLs, logs ni archivos públicos.
 class ClienteApi implements RepositorioApi {
-  ClienteApi({Dio? dio, String? baseUrl, this.progreso}) : dio = dio ?? Dio() {
+  ClienteApi({
+    Dio? dio,
+    String? baseUrl,
+    this.progreso,
+    this.retryDelay = const Duration(milliseconds: 800),
+    this.enableLiveEvents = true,
+    this.eventTransport = abrirEventos,
+  }) : dio = dio ?? Dio() {
     final url =
         baseUrl ??
         const String.fromEnvironment(
@@ -23,12 +32,18 @@ class ClienteApi implements RepositorioApi {
     }
     this.dio.options = BaseOptions(
       baseUrl: url.replaceFirst(RegExp(r'/$'), ''),
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 30),
+      // En Web Dio espera aquí hasta que llegan cabeceras, incluso durante
+      // el preflight. Debe cubrir también el despertar del servicio gratuito.
+      connectTimeout: const Duration(seconds: 75),
+      // Render Free puede tardar cerca de un minuto en despertar.
+      receiveTimeout: const Duration(seconds: 75),
     );
   }
   final Dio dio;
   final MonitorProgreso? progreso;
+  final Duration retryDelay;
+  final bool enableLiveEvents;
+  final Stream<String> Function(Uri, Map<String, String>) eventTransport;
   String? _accessToken;
   String? _refreshToken;
   DateTime? _expiresAt;
@@ -40,6 +55,33 @@ class ClienteApi implements RepositorioApi {
   void Function()? onSessionExpired;
   bool get hasSession => _accessToken != null;
   Uri resolve(String path) => Uri.parse(dio.options.baseUrl).resolve(path);
+
+  Stream<EventoServidor> events({String afterId = '0'}) async* {
+    final generation = _generation;
+    if (!enableLiveEvents || !hasSession) return;
+    if (_expiresAt != null &&
+        DateTime.now().isAfter(
+          _expiresAt!.subtract(const Duration(seconds: 30)),
+        )) {
+      await _renew();
+    }
+    final url = Uri.parse(
+      '${dio.options.baseUrl}/me/events',
+    ).replace(queryParameters: {'afterId': afterId});
+    await for (final event in interpretarEventos(
+      eventTransport(url, {
+        'Authorization': 'Bearer $_accessToken',
+        'Accept': 'text/event-stream',
+      }),
+    )) {
+      if (generation != _generation) return;
+      if (event.type == 'session-ended') {
+        await _renew();
+        return;
+      }
+      yield event;
+    }
+  }
 
   /// Una acción puede necesitar varias consultas sucesivas. La barra termina
   /// al finalizar el conjunto, sin reiniciarse entre cada respuesta HTTP.
@@ -156,9 +198,49 @@ class ClienteApi implements RepositorioApi {
         );
       }
 
+      Future<Response<Object?>> sendReadWithRecovery() async {
+        for (var attempt = 0; ; attempt++) {
+          try {
+            final response = await send();
+            // El proxy de alojamiento puede responder HTML mientras arranca.
+            // No interpretamos esa página como un catálogo JSON vacío.
+            if (!bytes &&
+                response.data is String &&
+                response.headers
+                        .value(Headers.contentTypeHeader)
+                        ?.contains('text/html') ==
+                    true) {
+              throw DioException(
+                requestOptions: response.requestOptions,
+                type: DioExceptionType.connectionError,
+                error: 'SERVICE_STARTING',
+              );
+            }
+            return response;
+          } on DioException catch (error) {
+            checkSession();
+            final temporary =
+                [
+                  DioExceptionType.connectionTimeout,
+                  DioExceptionType.receiveTimeout,
+                  DioExceptionType.connectionError,
+                ].contains(error.type) ||
+                [408, 502, 503, 504].contains(error.response?.statusCode);
+            if (method.toUpperCase() != 'GET' ||
+                data != null ||
+                !temporary ||
+                attempt >= 1) {
+              rethrow;
+            }
+            // Solo consultas: nunca se repiten publicaciones, mensajes o pagos.
+            await Future<void>.delayed(retryDelay);
+          }
+        }
+      }
+
       final sentToken = _accessToken;
       try {
-        final response = await send();
+        final response = await sendReadWithRecovery();
         checkSession();
         return response.data;
       } on DioException catch (error) {
@@ -169,7 +251,7 @@ class ClienteApi implements RepositorioApi {
             data is! FormData) {
           if (sentToken == _accessToken) await _renew();
           try {
-            final response = await send();
+            final response = await sendReadWithRecovery();
             checkSession();
             return response.data;
           } on DioException catch (retry) {
@@ -227,15 +309,34 @@ class ErrorApi implements Exception {
   const ErrorApi(this.message, [this.status = 0, this.code = '']);
   factory ErrorApi.fromDio(DioException error) {
     final data = jsonObject(error.response?.data);
+    final code = textValue(data['code']);
+    final friendly = switch (code) {
+      'SCANNER_UNAVAILABLE' =>
+        'No pudimos verificar el documento en este momento. Sigue privado; puedes reintentar su preparación desde Mis archivos.',
+      'VIDEO_PROCESSING_UNAVAILABLE' =>
+        'El servicio de preparación de vídeos no está disponible en este momento. Tu archivo se mantiene privado.',
+      'PROCESSING_BUSY' =>
+        'Estamos preparando otros archivos. Inténtalo de nuevo en unos segundos.',
+      'PROCESSING_FAILED' =>
+        'No pudimos terminar de preparar el archivo. Puedes reintentarlo desde Mis archivos.',
+      _ => null,
+    };
     return ErrorApi(
-      textValue(
-        data['message'],
-        error.response == null
-            ? 'No se pudo conectar con la API. Comprueba el servidor y tu conexión.'
-            : 'La solicitud no se pudo completar.',
-      ),
+      friendly ??
+          textValue(
+            data['message'],
+            error.response == null
+                ? switch (error.type) {
+                    DioExceptionType.receiveTimeout ||
+                    DioExceptionType.connectionTimeout =>
+                      'El servidor está tardando en responder. Puedes reintentar sin recargar la página.',
+                    _ =>
+                      'No se pudo conectar con la API. Comprueba tu conexión y vuelve a intentarlo.',
+                  }
+                : 'La solicitud no se pudo completar.',
+          ),
       error.response?.statusCode ?? 0,
-      textValue(data['code']),
+      code,
     );
   }
   final String message;

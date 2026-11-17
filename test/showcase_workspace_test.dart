@@ -63,7 +63,10 @@ void main() {
     });
     service =
         AplicacionController(
-            client: ClienteApi(dio: Dio()..httpClientAdapter = adapter),
+            client: ClienteApi(
+              enableLiveEvents: false,
+              dio: Dio()..httpClientAdapter = adapter,
+            ),
           )
           ..currentUser = const UsuarioAplicacion(
             id: '3',

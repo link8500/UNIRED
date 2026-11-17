@@ -38,7 +38,9 @@ class _ColeccionApiState extends State<ColeccionApi> {
             BotonAccionApi(
               label: 'Reintentar',
               action: () async {
-                setState(() => _result = _load());
+                setState(() {
+                  _result = _load();
+                });
               },
             ),
           ],
@@ -59,7 +61,9 @@ class _ColeccionApiState extends State<ColeccionApi> {
             PaginacionApi(
               page: snapshot.data,
               load: (page) async {
-                setState(() => _result = _load(page));
+                setState(() {
+                  _result = _load(page);
+                });
               },
             ),
         ],

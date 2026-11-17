@@ -74,40 +74,13 @@ class _PreferenciasCuentaState extends State<PreferenciasCuenta> {
                   EncabezadoSeccionAdmin(_sections[_section].$1),
                   const SizedBox(height: 14),
                   switch (_section) {
-                    1 => Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Visibilidad del teléfono',
-                          style: TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          'Elige quién puede ver tu número en el perfil público.',
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 8,
-                          children: [
-                            for (final visible in [false, true])
-                              ChoiceChip(
-                                label: Text(visible ? 'Público' : 'Solo yo'),
-                                selected: user.publicPhone == visible,
-                                onSelected: _saving || !user.verified
-                                    ? null
-                                    : (selected) {
-                                        if (selected) {
-                                          _update(
-                                            () => store.saveProfileData({
-                                              'telefonoPublico': visible,
-                                            }),
-                                          );
-                                        }
-                                      },
-                              ),
-                          ],
-                        ),
-                      ],
+                    1 => const ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.lock_outline),
+                      title: Text('Tus datos de contacto son privados'),
+                      subtitle: Text(
+                        'El correo y el teléfono no se muestran en tu perfil público. Usa el chat cuando la oferta o la tutoría haya sido aceptada.',
+                      ),
                     ),
                     2 => SwitchListTile.adaptive(
                       contentPadding: EdgeInsets.zero,

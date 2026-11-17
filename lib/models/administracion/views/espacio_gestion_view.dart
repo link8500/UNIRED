@@ -43,7 +43,9 @@ class _EspacioGestionViewState extends State<EspacioGestionView> {
       if (_state.isNotEmpty) 'estado': _state,
     },
   );
-  void _reload() => setState(() => _result = _load());
+  void _reload() => setState(() {
+    _result = _load();
+  });
   @override
   void dispose() {
     _search.dispose();
@@ -114,6 +116,19 @@ class _EspacioGestionViewState extends State<EspacioGestionView> {
         ('puntuacion', 'Valoración'),
       ],
     ),
+    'peer-reviews' => (
+      'Valoraciones entre usuarios',
+      'Opiniones verificadas al finalizar una compra, intercambio o tutoría',
+      RutasAplicacion.adminPeerReviews,
+      [
+        ('contexto', 'Interacción'),
+        ('autorNombre', 'Autor'),
+        ('receptorNombre', 'Persona valorada'),
+        ('puntuacion', 'Valoración'),
+        ('estado', 'Visibilidad'),
+        ('creadoEn', 'Fecha'),
+      ],
+    ),
     'reviews' => (
       'Reseñas de cursos',
       'Opiniones y visibilidad del contenido educativo',
@@ -163,7 +178,7 @@ class _EspacioGestionViewState extends State<EspacioGestionView> {
       'cancelada': 'Canceladas',
       'finalizada': 'Finalizadas',
     },
-    'reviews' || 'market-updates' => const {
+    'reviews' || 'peer-reviews' || 'market-updates' => const {
       '': 'Toda la actividad',
       'visible': 'Visible',
       'oculta': 'Oculta',
@@ -336,7 +351,9 @@ class _EspacioGestionViewState extends State<EspacioGestionView> {
                             PaginacionApi(
                               page: page,
                               load: (p) async {
-                                setState(() => _result = _load(p));
+                                setState(() {
+                                  _result = _load(p);
+                                });
                               },
                             ),
                           ],
@@ -427,6 +444,7 @@ class _EspacioGestionViewState extends State<EspacioGestionView> {
           ),
       ],
       if (widget.section == 'reviews' ||
+          widget.section == 'peer-reviews' ||
           widget.section == 'market-updates') ...[
         const Divider(height: 28),
         SelectableText(

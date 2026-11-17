@@ -19,6 +19,7 @@ import 'package:unired/models/tutorias/widgets/aula_curso.dart';
 import 'package:unired/shared/widgets/formulario_api.dart';
 import 'package:unired/shared/widgets/widgets_api.dart';
 import 'package:unired/shared/widgets/coleccion_api.dart';
+import 'package:unired/models/interacciones/widgets/valorar_interaccion.dart';
 import 'package:unired/shared/widgets/marco_pagina.dart';
 
 /// Catálogo, currículo y aula respetan la inscripción y permisos de la API.
@@ -284,7 +285,7 @@ class _CursoViewState extends State<CursoView> with RouteAware {
                         icon: const Icon(Icons.play_circle_outline),
                         label: const Text('Abrir aula'),
                       ),
-                    if (active || enrollment?['estado'] == 'solicitada')
+                    if (enrollment?['estado'] == 'activa')
                       BotonAccionApi(
                         label: 'Conversar con el tutor',
                         icon: Icons.chat_bubble_outline,
@@ -299,6 +300,15 @@ class _CursoViewState extends State<CursoView> with RouteAware {
                               '${RutasAplicacion.messages}?id=${textValue(chat['id'])}',
                             );
                           }
+                        },
+                      ),
+                    if (enrollment?['estado'] == 'completada')
+                      BotonValorarInteraccion(
+                        path: '/me/enrollments/$enrollmentId/peer-review',
+                        alreadyReviewed: enrollment?['resenaPropiaId'] != null,
+                        finished: () async {
+                          await _store.refreshEnrollments();
+                          if (mounted) _reload();
                         },
                       ),
                     if (owner && !widget.manage)

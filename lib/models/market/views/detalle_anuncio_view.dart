@@ -2,6 +2,8 @@
 // Consulta y presenta una publicación, su descripción y las opciones de contacto.
 
 import 'package:flutter/material.dart';
+import 'package:unired/models/comunidad/widgets/boton_denuncia.dart';
+import 'package:unired/models/comercial/widgets/boton_destacar.dart';
 import 'package:unired/core/dominio/datos_api.dart';
 import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
 import 'package:unired/models/aplicacion/navegacion/navegador_aplicacion.dart';
@@ -74,6 +76,20 @@ class _DetalleAnuncioViewState extends State<DetalleAnuncioView> {
                   ),
                 ),
                 const SizedBox(height: 12),
+                if (item.publicationType != 'venta')
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Text(
+                      item.publicationType == 'compra'
+                          ? 'ESTOY BUSCANDO COMPRAR'
+                          : 'PROPUESTA DE INTERCAMBIO',
+                      style: const TextStyle(
+                        color: ColoresAplicacion.blue,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
                 Text(
                   item.title,
                   style: const TextStyle(
@@ -186,6 +202,8 @@ class _DetalleAnuncioViewState extends State<DetalleAnuncioView> {
                     color: ColoresAplicacion.muted,
                   ),
                 ),
+                if (!own) BotonDenuncia(type: 'anuncio', resourceId: widget.id),
+                if (own) BotonDestacar(id: widget.id, tutorial: false),
               ],
             ),
           );

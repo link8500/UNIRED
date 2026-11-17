@@ -62,7 +62,10 @@ void main() {
     });
     service =
         AplicacionController(
-            client: ClienteApi(dio: Dio()..httpClientAdapter = adapter),
+            client: ClienteApi(
+              enableLiveEvents: false,
+              dio: Dio()..httpClientAdapter = adapter,
+            ),
           )
           ..currentUser = const UsuarioAplicacion(
             id: '2',
@@ -106,6 +109,34 @@ void main() {
   }
 
   for (final width in [1440.0, 390.0]) {
+    testWidgets(
+      'precio del curso a $width: muestra el cálculo sin campos manuales',
+      (t) async {
+        course['cotizacion'] = {
+          'total': '180.00',
+          'precioMinuto': '3.00',
+          'duracionMinutos': 60,
+          'pendienteContenido': false,
+        };
+        await open(
+          t,
+          EditorPublicacion(
+            isTutorial: true,
+            initial: course,
+            initialSection: 'price',
+          ),
+          width,
+        );
+        expect(find.text('Precio calculado por UniRed'), findsOneWidget);
+        expect(find.text('NIO 180.00'), findsAtLeastNWidgets(1));
+        expect(
+          find.byKey(const ValueKey('publication-precioBase')),
+          findsNothing,
+        );
+        expect(find.text('Gratuita'), findsNothing);
+        expect(t.takeException(), isNull);
+      },
+    );
     testWidgets(
       'creación guiada, sección y lectura con datos reales a $width',
       (t) async {

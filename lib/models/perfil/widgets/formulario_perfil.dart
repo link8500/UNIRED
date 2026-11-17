@@ -59,7 +59,6 @@ class _FormularioPerfilState extends State<FormularioPerfil> {
       : widget.initial['trabaja'] == false
       ? 'no'
       : 'sin_indicar';
-  late bool _publicPhone = widget.initial['telefonoPublico'] == true;
   @override
   void dispose() {
     for (final field in _fields.values) {
@@ -212,22 +211,6 @@ class _FormularioPerfilState extends State<FormularioPerfil> {
         _section('Presentación', 'El texto se muestra en tu perfil.', [
           _field('presentacion'),
         ]),
-        if (!widget.selfEdit)
-          SwitchListTile.adaptive(
-            contentPadding: EdgeInsets.zero,
-            title: const Text(
-              'Mostrar mi teléfono públicamente',
-              style: TextStyle(fontSize: 13),
-            ),
-            subtitle: const Text(
-              'Puedes desactivarlo en cualquier momento.',
-              style: TextStyle(fontSize: 11),
-            ),
-            value: _publicPhone,
-            onChanged: widget.enabled
-                ? (value) => setState(() => _publicPhone = value)
-                : null,
-          ),
         if (widget.requireReason) ...[
           const SizedBox(height: 12),
           _field('motivo'),
@@ -283,7 +266,7 @@ class _FormularioPerfilState extends State<FormularioPerfil> {
                         _fields['ocupacion']!.text.trim().isNotEmpty
                     ? _fields['ocupacion']!.text.trim()
                     : null;
-                if (!widget.selfEdit) data['telefonoPublico'] = _publicPhone;
+                if (!widget.selfEdit) data['telefonoPublico'] = false;
                 await widget.onSave(data);
               },
               success: 'Información guardada correctamente.',

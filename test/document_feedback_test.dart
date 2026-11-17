@@ -35,8 +35,12 @@ void main() {
   );
   setUp(() {
     adapter = TestAdapter((_) async => TestReply({}));
-    service = DraftService(ClienteApi(dio: Dio()..httpClientAdapter = adapter))
-      ..currentUser = user;
+    service = DraftService(
+      ClienteApi(
+        enableLiveEvents: false,
+        dio: Dio()..httpClientAdapter = adapter,
+      ),
+    )..currentUser = user;
     AplicacionController.replaceInstanceForTesting(service);
   });
   tearDown(() => service.dispose());
@@ -126,40 +130,46 @@ void main() {
   );
 
   testWidgets(
-    'abrir el artículo no contacta; Enviar usa el texto confirmado una sola vez',
+    'abrir el artículo no contacta; la oferta explícita espera aceptación antes del chat',
     (t) async {
       var sent = false;
       adapter = TestAdapter((r) async {
         if (r.path.endsWith('/contact')) {
           return TestReply({
-            'conversacionId': sent ? '8' : null,
-            'mensajeEnviado': sent,
+            'conversacionId': null,
+            'importeSugerido': '100.00',
+            'oferta': sent ? {'id': '1', 'estado': 'pendiente'} : null,
           });
         }
-        if (r.path.endsWith('/inquiry')) {
+        if (r.path.endsWith('/offers')) {
           sent = true;
-          return TestReply({'conversacionId': '8', 'mensajeEnviado': true});
+          return TestReply({'id': '1', 'estado': 'pendiente'}, status: 201);
         }
         return TestReply({});
       });
       service.api.dio.httpClientAdapter = adapter;
       await open(t, const ContactoVendedor(listingId: '4'));
       expect(adapter.requests.where((r) => r.method == 'POST'), isEmpty);
-      await t.enterText(find.byType(TextField), 'Hola, ¿incluye el cargador?');
+      await t.enterText(
+        find.byType(TextFormField).last,
+        'Hola, ¿incluye el cargador?',
+      );
       expect(adapter.requests.where((r) => r.method == 'POST'), isEmpty);
-      await t.tap(find.text('Enviar consulta'));
+      await t.tap(find.text('Enviar oferta'));
       await t.pumpAndSettle();
       final request = adapter.requests.singleWhere((r) => r.method == 'POST');
-      expect(request.path, '/listings/4/inquiry');
+      expect(request.path, '/listings/4/offers');
       expect(
         request.data,
-        containsPair('contenido', 'Hola, ¿incluye el cargador?'),
+        containsPair('mensaje', 'Hola, ¿incluye el cargador?'),
       );
-      expect(find.text('Ir a la conversación'), findsOneWidget);
-      expect(find.text('Enviar consulta'), findsNothing);
+      expect(find.text('Tu oferta está pendiente'), findsOneWidget);
+      expect(find.text('Abrir conversación'), findsNothing);
+      expect(find.text('Enviar oferta'), findsNothing);
       await t.pumpWidget(const SizedBox());
       await open(t, const ContactoVendedor(listingId: '4'));
-      expect(find.text('Ir a la conversación'), findsOneWidget);
+      expect(find.text('Tu oferta está pendiente'), findsOneWidget);
+      expect(find.text('Abrir conversación'), findsNothing);
       expect(adapter.requests.where((r) => r.method == 'POST'), hasLength(1));
     },
   );

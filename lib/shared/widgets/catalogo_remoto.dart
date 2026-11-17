@@ -28,6 +28,7 @@ class _CatalogoRemotoState extends State<CatalogoRemoto> {
   final _search = TextEditingController();
   String _category = '';
   String _sort = 'recent';
+  String _publicationType = '';
   Timer? _debounce;
   final _store = AplicacionController.instance;
   @override
@@ -40,6 +41,8 @@ class _CatalogoRemotoState extends State<CatalogoRemoto> {
   Future<void> _load({bool more = false}) async {
     final query = <String, Object?>{
       'sort': _sort,
+      if (!widget.tutorials && _publicationType.isNotEmpty)
+        'tipoPublicacion': _publicationType,
       if (_search.text.trim().isNotEmpty) 'q': _search.text.trim(),
       if (_category.isNotEmpty)
         (widget.tutorials ? 'areaId' : 'categoriaId'): int.parse(_category),
@@ -61,7 +64,10 @@ class _CatalogoRemotoState extends State<CatalogoRemoto> {
           ? _category
           : '';
       final ranking =
-          _search.text.isEmpty && _category.isEmpty && _sort == 'recent';
+          _search.text.isEmpty &&
+          _category.isEmpty &&
+          _sort == 'recent' &&
+          _publicationType.isEmpty;
       final page = widget.tutorials ? _store.coursesPage : _store.marketPage;
       final popular = widget.tutorials
           ? _store.topTutorials
@@ -98,6 +104,18 @@ class _CatalogoRemotoState extends State<CatalogoRemoto> {
                   color: ColoresAplicacion.navy,
                 ),
               ),
+              if (widget.tutorials)
+                Padding(
+                  padding: const EdgeInsets.only(top: 14, bottom: 8),
+                  child: OutlinedButton.icon(
+                    onPressed: () => NavegadorAplicacion.go(
+                      context,
+                      '${RutasAplicacion.tutoringRequests}?new=1',
+                    ),
+                    icon: const Icon(Icons.support_agent, size: 18),
+                    label: const Text('Solicitar tutoría sobre un tema'),
+                  ),
+                ),
               const SizedBox(height: 8),
               Text(
                 widget.tutorials
@@ -157,6 +175,44 @@ class _CatalogoRemotoState extends State<CatalogoRemoto> {
                         _load();
                       },
                     ),
+                  ),
+                  SizedBox(
+                    width: 180,
+                    child: widget.tutorials
+                        ? OutlinedButton.icon(
+                            onPressed: () => NavegadorAplicacion.go(
+                              context,
+                              RutasAplicacion.search,
+                            ),
+                            icon: const Icon(Icons.tune, size: 18),
+                            label: const Text('Más filtros'),
+                          )
+                        : DropdownButtonFormField<String>(
+                            initialValue: _publicationType,
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                              labelText: 'Tipo de publicación',
+                            ),
+                            items: const [
+                              DropdownMenuItem(value: '', child: Text('Todos')),
+                              DropdownMenuItem(
+                                value: 'venta',
+                                child: Text('En venta'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'compra',
+                                child: Text('Se busca'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'intercambio',
+                                child: Text('Intercambio'),
+                              ),
+                            ],
+                            onChanged: (value) {
+                              setState(() => _publicationType = value ?? '');
+                              _load();
+                            },
+                          ),
                   ),
                   SizedBox(
                     width: 180,

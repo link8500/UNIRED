@@ -13,6 +13,7 @@ void main() {
   setUp(() {
     service = AplicacionController(
       client: ClienteApi(
+        enableLiveEvents: false,
         dio: Dio()
           ..httpClientAdapter = TestAdapter((r) async {
             if (r.path == '/courses/9/lessons/1') {

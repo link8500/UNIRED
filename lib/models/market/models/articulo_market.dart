@@ -29,6 +29,7 @@ class ArticuloMarket {
     this.city = '',
     this.priceType = 'fijo',
     this.currency = 'NIO',
+    this.publicationType = 'venta',
   });
 
   final String id;
@@ -51,6 +52,7 @@ class ArticuloMarket {
   final String city;
   final String priceType;
   final String currency;
+  final String publicationType;
 
   /// La oferta no sustituye el precio base ni modifica el ranking de ventas.
   double get effectiveAmount =>
@@ -95,6 +97,7 @@ class ArticuloMarket {
       city: city,
       priceType: priceType,
       currency: currency,
+      publicationType: publicationType,
     );
   }
 }

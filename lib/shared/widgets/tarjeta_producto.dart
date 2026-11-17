@@ -23,6 +23,15 @@ class TarjetaProducto extends StatelessWidget {
   final bool prominent, isFavorite, compact;
   final VoidCallback? onTap, onFavorite;
   final String? badgeLabel;
+  String? get _label =>
+      badgeLabel ??
+      (item.publicationType == 'compra'
+          ? 'Se busca'
+          : item.publicationType == 'intercambio'
+          ? 'Intercambio'
+          : item.status.label != 'Publicado'
+          ? item.status.label
+          : null);
   @override
   Widget build(BuildContext context) => Material(
     color: Colors.white,
@@ -55,7 +64,7 @@ class TarjetaProducto extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (badgeLabel != null || item.status.label != 'Publicado')
+                if (_label != null)
                   Positioned(
                     top: 12,
                     left: 12,
@@ -69,7 +78,7 @@ class TarjetaProducto extends StatelessWidget {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        badgeLabel ?? item.status.label,
+                        _label!,
                         style: const TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w600,

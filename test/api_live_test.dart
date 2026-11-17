@@ -20,7 +20,9 @@ void main() {
       final base = textValue(fixture['baseUrl']);
       final stores = <AplicacionController>[];
       AplicacionController create() {
-        final service = AplicacionController(client: ClienteApi(baseUrl: base));
+        final service = AplicacionController(
+          client: ClienteApi(enableLiveEvents: false, baseUrl: base),
+        );
         stores.add(service);
         return service;
       }
@@ -145,6 +147,21 @@ void main() {
         await student.toggleFavorite(product);
         expect(student.isFavorite(product), isTrue);
         expect((await student.imageBytes(product.imageId!)).length > 8, isTrue);
+        final offer = await student.api.object(
+          '/listings/${product.id}/offers',
+          method: 'POST',
+          data: {
+            'clienteId': const Uuid().v4(),
+            'tipo': 'compra',
+            'importe': '100.00',
+            'mensaje': 'Quiero comprar el material de Flutter.',
+          },
+        );
+        await tutor.api.object(
+          '/me/offers/${offer['id']}',
+          method: 'PATCH',
+          data: {'estado': 'aceptada'},
+        );
         final conversation = await student.api.object(
           '/listings/${product.id}/conversations',
           method: 'POST',

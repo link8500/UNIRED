@@ -127,7 +127,10 @@ void main() {
       ),
     );
     service = AplicacionController(
-      client: ClienteApi(dio: Dio()..httpClientAdapter = adapter),
+      client: ClienteApi(
+        enableLiveEvents: false,
+        dio: Dio()..httpClientAdapter = adapter,
+      ),
     );
     service.currentUser = const UsuarioAplicacion(
       id: '1',
@@ -320,7 +323,10 @@ void main() {
     );
     service =
         AplicacionController(
-            client: ClienteApi(dio: Dio()..httpClientAdapter = adapter),
+            client: ClienteApi(
+              enableLiveEvents: false,
+              dio: Dio()..httpClientAdapter = adapter,
+            ),
           )
           ..currentUser = current
           ..initialized = true
@@ -462,6 +468,8 @@ void main() {
         size.width > 1000 ? 'dashboard-desktop' : 'dashboard-mobile',
       );
       expect(tester.getSize(card).height, lessThan(210));
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     });
   }

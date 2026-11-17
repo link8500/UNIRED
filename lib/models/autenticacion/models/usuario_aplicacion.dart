@@ -31,6 +31,7 @@ class UsuarioAplicacion {
     this.publicPhone = false,
     this.age,
     this.emailVerificationRequired = true,
+    this.hasPassword = true,
   });
 
   final String id;
@@ -56,6 +57,7 @@ class UsuarioAplicacion {
   final bool publicPhone;
   final int? age;
   final bool emailVerificationRequired;
+  final bool hasPassword;
 
   /// Ciudad, universidad y carrera son datos distintos en el contrato HTTP.
   factory UsuarioAplicacion.fromJson(Json row) {
@@ -81,6 +83,7 @@ class UsuarioAplicacion {
           .toList(),
       state: textValue(row['estado']),
       emailVerificationRequired: row['verificacionEmailRequerida'] != false,
+      hasPassword: row['tienePassword'] != false,
       avatarId: p['avatarArchivoId']?.toString(),
       bannerId: p['bannerArchivoId']?.toString(),
       notificationsEnabled: p['notificacionesActivas'] != false,
@@ -141,6 +144,7 @@ class UsuarioAplicacion {
       bio: bio ?? this.bio,
       state: state,
       emailVerificationRequired: emailVerificationRequired,
+      hasPassword: hasPassword,
       avatarId: avatarId,
       bannerId: bannerId,
       notificationsEnabled: notificationsEnabled,

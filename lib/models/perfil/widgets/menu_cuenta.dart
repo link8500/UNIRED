@@ -79,6 +79,22 @@ class MenuCuenta extends StatelessWidget {
         _section(SeccionCuenta.products),
         _section(SeccionCuenta.tutorials),
         _section(SeccionCuenta.favorites),
+        _item(RutasAplicacion.offers, 'Mis ofertas', Icons.handshake_outlined),
+        _item(
+          RutasAplicacion.tutoringRequests,
+          'Solicitudes de tutoría',
+          Icons.school_outlined,
+        ),
+        _item(
+          RutasAplicacion.business,
+          'Mis empresas',
+          Icons.business_outlined,
+        ),
+        _item(
+          RutasAplicacion.wallet,
+          'Mi cartera y compras',
+          Icons.account_balance_wallet_outlined,
+        ),
         _section(SeccionCuenta.preferences),
         if (user.isStaff)
           _item(

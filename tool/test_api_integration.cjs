@@ -145,7 +145,7 @@ async function main() {
         'node_modules/typeorm/cli.js',
         'migration:run',
         '-d',
-        'dist/infrastructure/database/data-source.js',
+        'dist/shared/base_datos/origen-datos.js',
       ],
       env,
     );
@@ -160,13 +160,13 @@ async function main() {
     const { rows } = await client.query(
       "SELECT COUNT(*)::int AS total FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'",
     );
-    assert.equal(rows[0].total, 44); // 42 originales + outbox + historial de migraciones.
+    assert.equal(rows[0].total, 60); // Incluye comercio e interacciones de comunidad.
     const adminPassword =
       'Prueba-admin-' + crypto.randomBytes(12).toString('hex');
     console.log('Creando administrador ficticio por consola...');
     await command(
       process.execPath,
-      ['dist/infrastructure/cli/create-admin.js'],
+      ['dist/shared/cli/crear-admin.js'],
       {
         ...env,
         BOOTSTRAP_ADMIN_EMAIL: 'admin@example.test',

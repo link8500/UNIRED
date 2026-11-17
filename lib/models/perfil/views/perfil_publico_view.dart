@@ -2,6 +2,7 @@
 // Consulta el perfil público de otro miembro respetando los datos que publica el backend.
 
 import 'package:flutter/material.dart';
+import 'package:unired/models/comunidad/widgets/boton_denuncia.dart';
 import 'package:unired/core/dominio/datos_api.dart';
 import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
 import 'package:unired/models/aplicacion/navegacion/navegador_aplicacion.dart';
@@ -39,7 +40,9 @@ class _PerfilPublicoViewState extends State<PerfilPublicoView> {
           if (snapshot.hasError) {
             return AvisoErrorApi(
               message: snapshot.error.toString(),
-              retry: () => setState(() => _profile = _load()),
+              retry: () => setState(() {
+                _profile = _load();
+              }),
             );
           }
           if (!snapshot.hasData) {
@@ -58,12 +61,26 @@ class _PerfilPublicoViewState extends State<PerfilPublicoView> {
             textValue(data['presentacion']),
             textValue(data['areaProfesional']),
             textValue(data['ciudad']),
-            if (data['telefono'] != null) 'Teléfono: ${data['telefono']}',
+            textValue(data['universidad']),
+            textValue(data['carrera']),
           ].where((value) => value.trim().isNotEmpty);
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               TarjetaIdentidadPerfil(user: user),
+              if (intValue(data['resenas']) > 0)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Text(
+                    '★ ${textValue(data['puntuacion'])} · ${data['resenas']} valoraciones verificadas',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              if (AplicacionController.instance.currentUser?.id != widget.id)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: BotonDenuncia(type: 'usuario', resourceId: widget.id),
+                ),
               if (details.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 TarjetaSuave(
@@ -80,6 +97,35 @@ class _PerfilPublicoViewState extends State<PerfilPublicoView> {
                 ),
               ],
               const SizedBox(height: 22),
+              if (intValue(data['resenas']) > 0)
+                TarjetaSuave(
+                  child: ExpansionTile(
+                    title: const Text('Experiencias de la comunidad'),
+                    subtitle: const Text(
+                      'Valoraciones de compras, intercambios y tutorías finalizadas',
+                    ),
+                    children: [
+                      ColeccionApi(
+                        path: '/profiles/${widget.id}/reviews',
+                        builder: (rows) => Column(
+                          children: [
+                            for (final review in rows)
+                              ListTile(
+                                isThreeLine: true,
+                                title: Text(
+                                  '★ ${review['puntuacion']} · ${textValue(review['autorNombre'])}',
+                                ),
+                                subtitle: Text(
+                                  '${textValue(review['contexto'])}\n${textValue(review['comentario'])}',
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
                 children: [

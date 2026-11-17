@@ -2,6 +2,7 @@
 // Compone el inicio con las publicaciones y tutorías obtenidas de la API.
 
 import 'package:flutter/material.dart';
+import 'package:unired/models/comercial/widgets/promociones_comunidad.dart';
 
 import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
 import 'package:unired/models/aplicacion/navegacion/navegador_aplicacion.dart';
@@ -29,6 +30,7 @@ class InicioView extends StatelessWidget {
           body: Column(
             children: [
               _hero(context),
+              PromocionesComunidad(key: ValueKey(store.promotionsRevision)),
               SeccionPagina(
                 padding: const EdgeInsets.fromLTRB(42, 58, 42, 70),
                 child: Column(
@@ -124,6 +126,15 @@ class InicioView extends StatelessWidget {
             ),
           ],
         ),
+        if (signedIn)
+          TextButton.icon(
+            onPressed: () => NavegadorAplicacion.go(
+              context,
+              '${RutasAplicacion.tutoringRequests}?new=1',
+            ),
+            icon: const Icon(Icons.add_circle_outline, size: 18),
+            label: const Text('Solicitar ayuda en una materia'),
+          ),
         if (!signedIn)
           TextButton(
             onPressed: () =>

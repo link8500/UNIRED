@@ -31,9 +31,13 @@ async function main() {
     const child = process.platform === 'win32'
       ? spawn('powershell', ['-NoProfile', '-NonInteractive', '-Command', '& flutter ' + args.map(quote).join(' ') + '; exit $LASTEXITCODE'], { cwd: root, windowsHide: true, stdio: 'inherit' })
       : spawn('flutter', args, { cwd: root, stdio: 'inherit' });
+    const timer = setTimeout(() => {
+      if(process.platform === 'win32') spawn('taskkill.exe',['/PID',String(child.pid),'/T','/F'],{windowsHide:true,stdio:'ignore'});
+      else child.kill('SIGTERM');
+    }, 180000);
     process.exitCode = await new Promise((resolve, reject) => {
-      child.once('error', reject);
-      child.once('exit', (code) => resolve(code ?? 1));
+      child.once('error', (error)=>{clearTimeout(timer);reject(error);});
+      child.once('exit', (code) => {clearTimeout(timer);resolve(code ?? 1);});
     });
   } finally {
     if (copied) {

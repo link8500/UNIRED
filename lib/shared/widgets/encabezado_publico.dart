@@ -41,6 +41,14 @@ class EncabezadoPublico extends StatelessWidget {
                           const LogoMarca(),
                           const SizedBox(width: 44),
                           Expanded(child: _links(context)),
+                          IconButton(
+                            tooltip: 'Buscar en UniRed',
+                            onPressed: () => NavegadorAplicacion.go(
+                              context,
+                              RutasAplicacion.search,
+                            ),
+                            icon: const Icon(Icons.search),
+                          ),
                           if (user != null) ...[
                             if (user.verified) const BotonNotificaciones(),
                             MenuCuenta(user: user),
@@ -136,6 +144,7 @@ class EncabezadoPublico extends StatelessWidget {
                 ('Sobre nosotros', RutasAplicacion.about),
                 ('Market', RutasAplicacion.market),
                 ('Tutorías', RutasAplicacion.tutorials),
+                ('Buscar en UniRed', RutasAplicacion.search),
                 if (!signedIn) ('Iniciar sesión', RutasAplicacion.login),
                 if (!signedIn) ('Crear cuenta', RutasAplicacion.register),
               ])
