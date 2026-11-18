@@ -17,41 +17,14 @@ class LogoMarca extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       label: ConstantesAplicacion.appName,
-      child: ExcludeSemantics(
-        child: SizedBox(
-          width: compact ? 101 : 133,
-          height: compact ? 42 : 54,
-          child: Column(
-            children: [
-              Expanded(
-                child: Image.asset(
-                  'assets/branding/unired-logo.png',
-                  width: compact ? 101 : 133,
-                  fit: BoxFit.contain,
-                  color: onDark ? Colors.white : null,
-                  filterQuality: FilterQuality.high,
-                ),
-              ),
-              const SizedBox(height: 1),
-              SizedBox(
-                height: compact ? 9 : 10,
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    'NICARAGUA',
-                    style: TextStyle(
-                      color: onDark ? Colors.white70 : ColoresAplicacion.navy,
-                      fontSize: 9,
-                      height: 1,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.8,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+      child: Image.asset(
+        'assets/branding/unired-logo.png',
+        width: compact ? 101 : 133,
+        height: compact ? 33 : 44,
+        fit: BoxFit.contain,
+        color: onDark ? Colors.white : null,
+        filterQuality: FilterQuality.high,
+        excludeFromSemantics: true,
       ),
     );
   }
