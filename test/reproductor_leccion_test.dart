@@ -84,6 +84,17 @@ void main() {
           ),
         );
         await t.pumpAndSettle();
+        final surface = find.byKey(const ValueKey('superficie-video-leccion'));
+        const doubleTapInterval = Duration(milliseconds: 70);
+        const waitSingleTap = Duration(milliseconds: 320);
+
+        await t.tap(surface);
+        await t.pump(waitSingleTap);
+        expect(video.playing, isTrue);
+        await t.tap(surface);
+        await t.pump(waitSingleTap);
+        expect(video.playing, isFalse);
+
         await t.tap(find.byTooltip('Avanzar 10 segundos'));
         await t.pumpAndSettle();
         expect(video.position, const Duration(seconds: 10));
@@ -91,9 +102,12 @@ void main() {
         await t.pumpAndSettle();
         final volume = video.volume;
         expect(volume, inExclusiveRange(0, 1));
-        await t.tap(find.byTooltip('Pantalla completa'));
+        await t.tap(surface);
+        await t.pump(doubleTapInterval);
+        await t.tap(surface);
         await t.pumpAndSettle();
         expect(find.byTooltip('Salir de pantalla completa'), findsOneWidget);
+        expect(video.playing, isFalse); // El doble toque no reproduce el video.
         expect(find.text('0:10 / 2:00'), findsOneWidget);
         await t.tap(find.byTooltip('Silenciar'));
         await t.pumpAndSettle();
@@ -105,6 +119,13 @@ void main() {
         await t.pumpAndSettle();
         expect(find.byTooltip('Pantalla completa'), findsOneWidget);
         expect(find.text('0:10 / 2:00'), findsOneWidget);
+        await t.tap(find.byTooltip('Pantalla completa'));
+        await t.pumpAndSettle();
+        await t.tap(surface);
+        await t.pump(doubleTapInterval);
+        await t.tap(surface);
+        await t.pumpAndSettle();
+        expect(find.byTooltip('Pantalla completa'), findsOneWidget);
         expect(video.opened, 1);
         expect(t.takeException(), isNull);
       },

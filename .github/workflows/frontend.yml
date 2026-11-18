@@ -57,6 +57,13 @@ jobs:
           --dart-define=ADSENSE_SQUARE_SLOT="$ADSENSE_SQUARE_SLOT"
           --dart-define=ADSENSE_HORIZONTAL_SLOT="$ADSENSE_HORIZONTAL_SLOT"
 
+      - name: Comprobar ads.txt en la raíz del sitio
+        run: |
+          cmp web/ads.txt build/web/ads.txt
+          publisher="$(sed -n 's/.*name="google-adsense-account" content="ca-\(pub-[0-9]*\)".*/\1/p' web/index.html)"
+          test -n "$publisher"
+          grep -Fx "google.com, $publisher, DIRECT, f08c47fec0942fa0" build/web/ads.txt
+
       # Las solicitudes de cambios solo verifican el proyecto.
       # La publicación ocurre después de las comprobaciones y solo desde main.
       - name: Preparar Node para publicar

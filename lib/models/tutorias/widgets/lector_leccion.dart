@@ -4,6 +4,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:video_player/video_player.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:unired/core/dominio/datos_api.dart';
@@ -13,6 +14,7 @@ import 'package:unired/shared/widgets/widgets_api.dart';
 import 'package:unired/shared/widgets/formulario_api.dart';
 import 'package:unired/shared/widgets/coleccion_api.dart';
 import 'package:unired/shared/widgets/marco_pagina.dart';
+import 'package:unired/models/tutorias/widgets/pantalla_completa_video.dart';
 
 String lessonTime(Duration value) => value.inHours > 0
     ? '${value.inHours}:${(value.inMinutes % 60).toString().padLeft(2, '0')}:${(value.inSeconds % 60).toString().padLeft(2, '0')}'
@@ -45,6 +47,7 @@ class _LectorLeccionState extends State<LectorLeccion> with RouteAware {
   final _player = ValueNotifier<VideoPlayerController?>(null);
   VideoPlayerController? get _video => _player.value;
   bool _expandedVideo = false;
+  PantallaCompletaVideo? _nativeFullscreen;
   Timer? _ticketTimer;
   String? _error;
   bool _renewing = false;
@@ -76,6 +79,8 @@ class _LectorLeccionState extends State<LectorLeccion> with RouteAware {
   void dispose() {
     NavegadorAplicacion.visibilityObserver.unsubscribe(this);
     _ticketTimer?.cancel();
+    final fullscreen = _nativeFullscreen;
+    if (fullscreen != null) unawaited(fullscreen.salir());
     _video?.dispose();
     _player.dispose();
     super.dispose();
@@ -144,29 +149,42 @@ class _LectorLeccionState extends State<LectorLeccion> with RouteAware {
 
   Future<void> _expandVideo() async {
     if (_expandedVideo) return;
-    setState(() => _expandedVideo = true);
-    try {
-      await showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        useSafeArea: false,
-        builder: (dialogContext) => Dialog.fullscreen(
-          backgroundColor: const Color(0xFF172130),
-          child: SafeArea(
-            child: ValueListenableBuilder(
-              valueListenable: _player,
-              builder: (_, controller, _) => controller == null
-                  ? const SizedBox.shrink()
-                  : _playback(
-                      controller,
-                      onResize: () => Navigator.of(dialogContext).pop(),
-                      expanded: true,
-                    ),
-            ),
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final fullscreen = PantallaCompletaVideo();
+    _nativeFullscreen = fullscreen;
+    late final DialogRoute<void> route;
+    void closePlayer() {
+      if (route.isCurrent) {
+        navigator.pop<void>();
+      } else if (route.isActive) {
+        navigator.removeRoute(route);
+      }
+    }
+
+    route = DialogRoute<void>(
+      context: context,
+      barrierDismissible: false,
+      useSafeArea: false,
+      builder: (_) => Dialog.fullscreen(
+        backgroundColor: Colors.black,
+        child: SafeArea(
+          child: ValueListenableBuilder(
+            valueListenable: _player,
+            builder: (_, controller, _) => controller == null
+                ? const SizedBox.shrink()
+                : _playback(controller, onResize: closePlayer, expanded: true),
           ),
         ),
-      );
+      ),
+    );
+    // Conserva el gesto que el navegador exige para entrar en pantalla completa.
+    fullscreen.entrar(closePlayer);
+    setState(() => _expandedVideo = true);
+    try {
+      await navigator.push(route);
     } finally {
+      await fullscreen.salir();
+      if (identical(_nativeFullscreen, fullscreen)) _nativeFullscreen = null;
       if (mounted) setState(() => _expandedVideo = false);
     }
   }
@@ -178,11 +196,27 @@ class _LectorLeccionState extends State<LectorLeccion> with RouteAware {
   }) => ValueListenableBuilder<VideoPlayerValue>(
     valueListenable: controller,
     builder: (_, value, _) {
+      final surface = Stack(
+        fit: StackFit.expand,
+        children: [
+          VideoPlayer(controller),
+          PointerInterceptor(
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                key: const ValueKey('superficie-video-leccion'),
+                behavior: HitTestBehavior.opaque,
+                onTap: () => controller.value.isPlaying
+                    ? controller.pause()
+                    : controller.play(),
+                onDoubleTap: onResize,
+              ),
+            ),
+          ),
+        ],
+      );
       final player = Center(
-        child: AspectRatio(
-          aspectRatio: value.aspectRatio,
-          child: VideoPlayer(controller),
-        ),
+        child: AspectRatio(aspectRatio: value.aspectRatio, child: surface),
       );
       final volumeIcon = value.volume == 0 ? Icons.volume_off : Icons.volume_up;
       return Column(
@@ -191,10 +225,7 @@ class _LectorLeccionState extends State<LectorLeccion> with RouteAware {
           if (expanded)
             Expanded(child: player)
           else
-            _videoFrame(
-              aspectRatio: value.aspectRatio,
-              child: VideoPlayer(controller),
-            ),
+            _videoFrame(aspectRatio: value.aspectRatio, child: surface),
           Material(
             color: const Color(0xFF172130),
             child: IconTheme(
