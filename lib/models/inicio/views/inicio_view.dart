@@ -2,6 +2,7 @@
 // Compone el inicio con las publicaciones y tutorías obtenidas de la API.
 
 import 'package:flutter/material.dart';
+import 'package:unired/core/constantes/constantes_aplicacion.dart';
 import 'package:unired/models/comercial/widgets/promociones_comunidad.dart';
 
 import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
@@ -89,7 +90,7 @@ class InicioView extends StatelessWidget {
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Antetitulo('Comunidad universitaria'),
+        const Antetitulo(ConstantesAplicacion.appName),
         const SizedBox(height: 14),
         Text(
           'Aprende y encuentra lo que necesitas para estudiar',
@@ -101,7 +102,7 @@ class InicioView extends StatelessWidget {
         ),
         const SizedBox(height: 18),
         Text(
-          'Encuentra tutorías, comparte tus conocimientos y compra o vende entre estudiantes.',
+          'Encuentra tutorías, comparte tus conocimientos y compra o vende entre estudiantes de Nicaragua.',
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
             height: 1.55,
             color: ColoresAplicacion.muted,

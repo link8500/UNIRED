@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:unired/core/constantes/constantes_aplicacion.dart';
 import 'package:unired/core/datos/remoto/cliente_api.dart';
 import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
 import 'package:unired/models/aplicacion/navegacion/navegador_aplicacion.dart';
@@ -35,7 +36,7 @@ class PiePaginaPublico extends StatelessWidget {
               runSpacing: 10,
               children: [
                 Text(
-                  '© ${DateTime.now().year} UniRed · Plataforma estudiantil',
+                  '© ${DateTime.now().year} ${ConstantesAplicacion.appName} · Plataforma estudiantil',
                   style: const TextStyle(color: Colors.white54, fontSize: 11),
                 ),
                 const Text(
@@ -70,7 +71,11 @@ class PiePaginaPublico extends StatelessWidget {
           _link(context, 'Inicio', RutasAplicacion.home),
           _link(context, 'Marketplace', RutasAplicacion.market),
           _link(context, 'Tutorías', RutasAplicacion.tutorials),
-          _link(context, 'Sobre UniRed', RutasAplicacion.about),
+          _link(
+            context,
+            'Sobre ${ConstantesAplicacion.appName}',
+            RutasAplicacion.about,
+          ),
         ]),
         _group('Tu espacio', [
           _link(
@@ -156,7 +161,7 @@ class PiePaginaPublico extends StatelessWidget {
   void _privacy(BuildContext context) => showDialog<void>(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text('Privacidad en UniRed'),
+      title: const Text('Privacidad en ${ConstantesAplicacion.appName}'),
       content: const Text(
         'Tu nombre, presentación y publicaciones pueden formar parte de tu perfil público. El correo no se muestra en la ficha pública habitual; el teléfono solo se muestra si habilitas esa opción.\n\nLas conversaciones pueden ser consultadas por sus participantes y por el personal autorizado para revisarlas. Tus acreditaciones y el material restringido requieren permisos.\n\nLos pagos actuales son de demostración: los datos de la tarjeta no se envían ni se guardan.\n\nDesde Mi cuenta puedes actualizar tu información y revisar tus opciones de seguridad. Para solicitar la eliminación definitiva de tus datos, consulta las instrucciones públicas.',
       ),

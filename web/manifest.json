@@ -1,11 +1,11 @@
 {
-    "name": "UniRed",
-    "short_name": "UniRed",
+    "name": "UniRed Nicaragua",
+    "short_name": "UniRed NI",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FFFFFF",
     "theme_color": "#0079D3",
-    "description": "UniRed: tutorías, marketplace y conversaciones para tu comunidad universitaria.",
+    "description": "UniRed Nicaragua: tutorías, marketplace y conversaciones para la comunidad universitaria nicaragüense.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

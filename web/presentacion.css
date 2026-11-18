@@ -62,6 +62,16 @@ body {
   color: #e44f65;
 }
 
+.unired-start-country {
+  display: block;
+  color: #526275;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
 .unired-start nav {
   display: flex;
   flex-wrap: wrap;

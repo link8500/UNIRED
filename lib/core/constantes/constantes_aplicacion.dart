@@ -5,6 +5,6 @@
 ///
 /// Son constantes porque no dependen de servicios ni de estado de usuario.
 class ConstantesAplicacion {
-  static const appName = 'UniRed';
+  static const appName = 'UniRed Nicaragua';
   static const appVersion = '1.0.0';
 }
