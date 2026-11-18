@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:unired/core/constantes/estado_publicacion.dart';
 import 'package:unired/core/constantes/limites_archivos.dart';
 import 'package:unired/core/datos/remoto/cliente_api.dart';
+import 'package:unired/core/datos/remoto/identificador_navegador.dart';
 import 'package:unired/core/dominio/datos_api.dart';
 import 'package:unired/models/administracion/models/usuario_comunidad.dart';
 import 'package:unired/models/autenticacion/models/usuario_aplicacion.dart';
@@ -29,11 +30,15 @@ import 'package:unired/core/datos/remoto/navegador_social.dart';
 /// Se mantienen separados catálogo público, publicaciones propias y moderación.
 /// Ninguna mutación se confirma en pantalla antes de la respuesta del servidor.
 class AplicacionController extends ChangeNotifier {
-  AplicacionController({ClienteApi? client, NavegadorSocial? socialBrowser})
-    : navegadorSocial = socialBrowser ?? crearNavegadorSocial(),
-      api =
-          client ??
-          ClienteApi(progreso: ProgresoNavegacionController.instance) {
+  AplicacionController({
+    ClienteApi? client,
+    NavegadorSocial? socialBrowser,
+    String? Function()? browserId,
+  }) : navegadorSocial = socialBrowser ?? crearNavegadorSocial(),
+       _browserId = browserId ?? leerIdentificadorNavegador,
+       api =
+           client ??
+           ClienteApi(progreso: ProgresoNavegacionController.instance) {
     api.onSessionExpired = () => _clearAccount(clearTokens: false);
   }
   static AplicacionController _instance = AplicacionController();
@@ -43,6 +48,7 @@ class AplicacionController extends ChangeNotifier {
       _instance = service;
   final ClienteApi api;
   final NavegadorSocial navegadorSocial;
+  final String? Function() _browserId;
   late final publicaciones = PublicacionesUseCases(api);
   UsuarioAplicacion? currentUser;
   bool get isAdmin => currentUser?.isStaff ?? false;
@@ -344,7 +350,11 @@ class AplicacionController extends ChangeNotifier {
       '/auth/login',
       method: 'POST',
       authenticated: false,
-      data: {'email': email.trim(), 'password': password},
+      data: {
+        'email': email.trim(),
+        'password': password,
+        'navegadorId': ?_browserId(),
+      },
     );
     return _openSession(result, admin: admin);
   }
@@ -420,6 +430,7 @@ class AplicacionController extends ChangeNotifier {
         'codigo': code,
         'verificador': pending['verificador'],
         'passwordActual': ?password,
+        'navegadorId': ?_browserId(),
       },
     );
     if (result['requierePassword'] == true ||

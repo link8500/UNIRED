@@ -154,24 +154,50 @@ class _SeguridadCuentaState extends State<SeguridadCuenta> {
         ColeccionApi(
           key: ValueKey(_sessions),
           path: '/me/sessions',
-          builder: (rows) => Column(
-            children: [
-              for (final session in rows)
-                ListTile(
-                  title: Text(
-                    'Iniciada el ${localDateTime(session['creadoEn'])}',
+          builder: (rows) {
+            final hasCurrent = rows.any((s) => s['actual'] == true);
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (hasCurrent && rows.length > 1)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: OutlinedButton.icon(
+                      onPressed: _revokeOthers,
+                      icon: const Icon(Icons.devices_other),
+                      label: const Text('Cerrar las demás sesiones'),
+                    ),
                   ),
-                  subtitle: Text(
-                    'Vence el ${localDateTime(session['expiraEn'])}',
+                for (final session in rows)
+                  ListTile(
+                    leading: Icon(
+                      session['actual'] == true
+                          ? Icons.verified_user_outlined
+                          : Icons.devices_outlined,
+                    ),
+                    title: Text(
+                      textValue(
+                        session['dispositivo'],
+                        'Dispositivo no identificado',
+                      ),
+                    ),
+                    isThreeLine: true,
+                    subtitle: Text(
+                      '${session['actual'] == true ? 'Sesión actual · ' : ''}'
+                      'Iniciada el ${localDateTime(session['creadoEn'])}\n'
+                      'Vence el ${localDateTime(session['expiraEn'])}',
+                    ),
+                    trailing: session['actual'] == true
+                        ? null
+                        : IconButton(
+                            tooltip: 'Cerrar esta sesión',
+                            icon: const Icon(Icons.logout_rounded),
+                            onPressed: () => _revoke(session),
+                          ),
                   ),
-                  trailing: IconButton(
-                    tooltip: 'Cerrar esta sesión',
-                    icon: const Icon(Icons.logout_rounded),
-                    onPressed: () => _revoke(session),
-                  ),
-                ),
-            ],
-          ),
+              ],
+            );
+          },
         ),
       ],
     ),
@@ -192,6 +218,26 @@ class _SeguridadCuentaState extends State<SeguridadCuenta> {
       await AplicacionController.instance.api.object(
         '/me/sessions/${textValue(session['id'])}',
         method: 'DELETE',
+      );
+      if (mounted) setState(() => _sessions++);
+    });
+  }
+
+  Future<void> _revokeOthers() async {
+    final accepted = await AvisosAplicacion.show(
+      context,
+      title: 'Cerrar las demás sesiones',
+      message:
+          'Tu sesión actual seguirá abierta. Los otros navegadores y dispositivos deberán volver a iniciar sesión.',
+      kind: TipoAviso.warning,
+      action: 'Cerrar las demás',
+      cancel: 'Volver',
+    );
+    if (!mounted || !accepted) return;
+    await runApiAction(context, () async {
+      await AplicacionController.instance.api.object(
+        '/me/sessions/revoke-others',
+        method: 'POST',
       );
       if (mounted) setState(() => _sessions++);
     });

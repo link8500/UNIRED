@@ -55,11 +55,14 @@ Future<void> flushRequests(WidgetTester t) async {
 }
 
 void main() {
+  const browserId = '1c2511ff-911b-4acb-9046-7dd3b11034a5';
   late AplicacionController store;
   late NavegadorPrueba browser;
   late TestAdapter adapter;
   Json providers = {}, exchange = {}, account = {}, linked = {};
+  List<Json> sessions = [];
   setUp(() {
+    sessions = [];
     providers = {'google': true, 'facebook': true};
     exchange = {
       'accessToken': 'jwt-ficticio',
@@ -90,13 +93,23 @@ void main() {
           'url': 'https://accounts.google.com/o/oauth2/v2/auth?state=ficticio',
         });
       }
-      if (r.path == '/auth/social/exchange') return TestReply(exchange);
+      if (['/auth/social/exchange', '/auth/login'].contains(r.path)) {
+        return TestReply(exchange);
+      }
       if (r.path == '/me') return TestReply(account);
       if (r.path == '/me/social') return TestReply(linked);
+      if (r.path == '/me/sessions') return TestReply(sessions);
+      if (r.path == '/me/sessions/revoke-others') {
+        sessions = sessions
+            .where((session) => session['actual'] == true)
+            .toList();
+        return TestReply({'cerradas': 2});
+      }
       return TestReply({'items': [], 'total': 0, 'page': 1, 'limit': 50});
     });
     store = AplicacionController(
       socialBrowser: browser,
+      browserId: () => browserId,
       client: ClienteApi(
         enableLiveEvents: false,
         dio: Dio()..httpClientAdapter = adapter,
@@ -164,7 +177,17 @@ void main() {
       (r) => r.path == '/auth/social/exchange',
     );
     expect((sent.data as Map).containsKey('passwordActual'), false);
+    expect((sent.data as Map)['navegadorId'], browserId);
   });
+  test(
+    'el acceso con contraseña también envía el identificador del navegador',
+    () async {
+      await store.signIn(email: 'social@example.test', password: 'ficticia');
+      final sent = adapter.requests.singleWhere((r) => r.path == '/auth/login');
+      expect((sent.data as Map)['navegadorId'], browserId);
+      await store.logout();
+    },
+  );
   test(
     'confirmar una cuenta conserva el intento sin aceptar JWT prematuramente',
     () async {
@@ -187,6 +210,48 @@ void main() {
     );
     expect(adapter.requests, isEmpty);
   });
+  testWidgets(
+    'Seguridad identifica los dispositivos y conserva la sesión actual al cerrar las demás',
+    (t) async {
+      sessions = [
+        {
+          'id': '1',
+          'dispositivo': 'Chrome en Windows',
+          'actual': true,
+          'creadoEn': '2026-11-18T20:00:00Z',
+          'expiraEn': '2026-12-18T20:00:00Z',
+        },
+        {
+          'id': '2',
+          'dispositivo': 'Safari en iPhone',
+          'creadoEn': '2026-11-18T20:00:00Z',
+          'expiraEn': '2026-12-18T20:00:00Z',
+        },
+        {
+          'id': '3',
+          'creadoEn': '2026-11-17T20:00:00Z',
+          'expiraEn': '2026-12-17T20:00:00Z',
+        },
+      ];
+      await screen(t, const SeguridadCuenta(), 390);
+      expect(find.text('Chrome en Windows'), findsOneWidget);
+      expect(find.textContaining('Sesión actual'), findsOneWidget);
+      expect(find.text('Safari en iPhone'), findsOneWidget);
+      expect(find.text('Dispositivo no identificado'), findsOneWidget);
+      final close = find.text('Cerrar las demás sesiones');
+      await t.ensureVisible(close);
+      await t.tap(close);
+      await t.pumpAndSettle();
+      expect(
+        adapter.requests.where((r) => r.path.endsWith('revoke-others')),
+        isEmpty,
+      );
+      await t.tap(find.text('Cerrar las demás'));
+      await t.pumpAndSettle();
+      expect(find.text('Safari en iPhone'), findsNothing);
+      expect(find.text('Chrome en Windows'), findsOneWidget);
+    },
+  );
   test('entrar por el acceso administrativo no eleva los roles', () async {
     await store.iniciarAccesoSocial('google', admin: true);
     await expectLater(
