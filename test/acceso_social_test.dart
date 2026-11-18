@@ -302,8 +302,17 @@ void main() {
         );
         await screen(t, const RetornoSocialView(code: 'codigo'), width);
         expect(find.byType(PanelView), findsOneWidget);
-        expect(find.byType(Drawer), findsNothing);
+        expect(
+          find.byTooltip('Abrir navegación'),
+          width < 960 ? findsOneWidget : findsNothing,
+        );
         expect(find.text('Sin cuentas registradas'), findsOneWidget);
+        if (width < 960) {
+          await t.tap(find.byTooltip('Abrir navegación'));
+          await t.pumpAndSettle();
+          expect(find.byType(Drawer), findsOneWidget);
+        }
+        expect(find.text('Mi perfil'), findsOneWidget);
         await t.runAsync(store.logout);
       },
     );

@@ -3,17 +3,59 @@
   const basePath = new URL(document.baseURI).pathname;
   const isAppRoute = () => window.location.hash.startsWith('#/') ||
     ![basePath, basePath + 'index.html'].includes(window.location.pathname);
-  if (!isAppRoute()) {
-    // Las rutas con hash necesitan un documento nuevo para quitar el entorno de anuncios.
-    window.addEventListener('hashchange', () => {
-      if (isAppRoute()) window.location.reload();
-    });
-    const publisher = document.querySelector('meta[name="google-adsense-account"]').content;
+  const loadAds = () => {
+    const { protocol, hostname } = window.location;
+    if (protocol !== 'https:' || hostname === 'localhost' ||
+        (hostname.endsWith('.netlify.app') && hostname.includes('--'))) return null;
+    const existing = document.getElementById('unired-adsense-loader');
+    if (existing) return existing;
+    const publisher = document.querySelector('meta[name="google-adsense-account"]')?.content;
+    if (!publisher || !/^ca-pub-\d+$/.test(publisher)) return null;
     const ads = document.createElement('script');
+    ads.id = 'unired-adsense-loader';
     ads.async = true;
     ads.crossOrigin = 'anonymous';
     ads.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + publisher;
+    ads.addEventListener('error', () => { ads.dataset.uniredFailed = 'true'; });
     document.head.append(ads);
+    return ads;
+  };
+  window.uniredRegisterDisplayAd = (unit) => {
+    if (!(unit instanceof HTMLElement) || unit.dataset.uniredRequested) return;
+    // Flutter crea la vista antes de conectarla al DOM. Solo se solicita con ancho real.
+    const observer = new ResizeObserver(() => {
+      if (!unit.isConnected || unit.clientWidth === 0) return;
+      observer.disconnect();
+      clearTimeout(timeout);
+      if (unit.dataset.uniredRequested) return;
+      unit.dataset.uniredRequested = 'true';
+      const script = loadAds();
+      const hide = () => unit.setAttribute('data-unired-ad-error', '');
+      if (!script || script.dataset.uniredFailed) {
+        hide();
+        return;
+      }
+      script.addEventListener('error', hide, { once: true });
+      script.addEventListener('load', () => script.removeEventListener('error', hide), { once: true });
+      try {
+        (window.adsbygoogle = window.adsbygoogle || []).push({});
+      } catch (error) {
+        hide();
+        console.warn('No se pudo iniciar el bloque de anuncios de Inicio.', error);
+      }
+    });
+    const timeout = setTimeout(() => {
+      observer.disconnect();
+      if (unit.isConnected) unit.setAttribute('data-unired-ad-error', '');
+    }, 20000);
+    observer.observe(unit);
+  };
+  if (!isAppRoute()) {
+    // La portada es HTML independiente y Flutter se abre al entrar a la aplicación.
+    window.addEventListener('hashchange', () => {
+      if (isAppRoute()) window.location.reload();
+    });
+    loadAds();
     return;
   }
 

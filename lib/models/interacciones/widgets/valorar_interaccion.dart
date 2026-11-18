@@ -2,7 +2,7 @@
 // Formulario único para valorar a la otra persona después de una interacción finalizada.
 import 'package:flutter/material.dart';
 import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
-import 'package:unired/shared/widgets/formulario_api.dart';
+import 'package:unired/shared/widgets/formulario_resena.dart';
 
 class BotonValorarInteraccion extends StatelessWidget {
   const BotonValorarInteraccion({
@@ -37,28 +37,10 @@ class BotonValorarInteraccion extends StatelessWidget {
                             icon: const Icon(Icons.close),
                           ),
                         ),
-                        FormularioApi(
+                        FormularioResena(
                           title: '¿Cómo fue tu experiencia?',
                           label: 'Enviar valoración',
-                          fields: const [
-                            CampoApi(
-                              'puntuacion',
-                              'Puntuación',
-                              kind: TipoCampoApi.integerChoice,
-                              choices: {
-                                '5': '★★★★★ · Excelente',
-                                '4': '★★★★ · Muy buena',
-                                '3': '★★★ · Buena',
-                                '2': '★★ · Regular',
-                                '1': '★ · Mala',
-                              },
-                            ),
-                            CampoApi(
-                              'comentario',
-                              'Comparte tu experiencia',
-                              lines: 4,
-                            ),
-                          ],
+                          commentRequired: true,
                           submit: (fields) async {
                             await AplicacionController.instance.api.object(
                               path,

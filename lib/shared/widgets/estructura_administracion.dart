@@ -1,7 +1,8 @@
 // Archivo: lib/shared/widgets/estructura_administracion.dart
-// Comparte una barra superior para todas las vistas administrativas.
+// Compone el lateral, la barra superior y el área principal de las vistas administrativas.
 
 import 'package:flutter/material.dart';
+import 'package:unired/shared/widgets/pestanas_administracion.dart';
 import 'package:unired/models/administracion/models/modulos_administracion.dart';
 import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
 import 'package:unired/models/aplicacion/navegacion/navegador_aplicacion.dart';
@@ -26,6 +27,7 @@ class EstructuraAdministracion extends StatelessWidget {
     animation: AplicacionController.instance,
     builder: (_, _) => LayoutBuilder(
       builder: (_, size) {
+        final wide = size.maxWidth >= 960;
         final theme = Theme.of(context);
         return Theme(
           data: theme.copyWith(
@@ -74,11 +76,47 @@ class EstructuraAdministracion extends StatelessWidget {
             ),
           ),
           child: Scaffold(
+            drawer: wide ? null : Drawer(width: 228, child: _sidebar()),
             body: SafeArea(
-              child: Column(
+              child: Row(
                 children: [
-                  _navigation(context, size.maxWidth >= 1180),
-                  Expanded(child: child),
+                  if (wide) SizedBox(width: 190, child: _sidebar()),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        if (!wide)
+                          Builder(
+                            builder: (scaffold) => Material(
+                              color: const Color(0xFF272727),
+                              child: SizedBox(
+                                height: 48,
+                                child: Row(
+                                  children: [
+                                    IconButton(
+                                      tooltip: 'Abrir navegación',
+                                      onPressed: () =>
+                                          Scaffold.of(scaffold).openDrawer(),
+                                      icon: const Icon(
+                                        Icons.menu,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    const LogoMarca(
+                                      onDark: true,
+                                      compact: true,
+                                    ),
+                                    const Spacer(),
+                                    const BotonNotificaciones(),
+                                    const SizedBox(width: 8),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        Expanded(child: child),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -88,222 +126,202 @@ class EstructuraAdministracion extends StatelessWidget {
     ),
   );
 
-  Widget _navigation(BuildContext context, bool wide) {
-    final store = AplicacionController.instance;
-    final user = store.currentUser;
-    final route = ModalRoute.of(context)?.settings.name ?? current;
-    final groups = <(String, IconData, List<PestanaModuloAdmin>)>[
-      if (store.isAdministrator)
-        ('Usuarios', Icons.people_outline, ModulosAdministracion.users),
-      if (store.canReview)
-        ('Tutores', Icons.school_outlined, ModulosAdministracion.tutors),
-      if (store.canModerate) ...[
-        ('Formación', Icons.menu_book_outlined, ModulosAdministracion.training),
-        (
-          'Marketplace',
-          Icons.storefront_outlined,
-          ModulosAdministracion.marketplace,
-        ),
-        (
-          'Atención',
-          Icons.support_agent_outlined,
-          ModulosAdministracion.support,
-        ),
-      ],
-      if (store.isAdministrator) ...[
-        (
-          'Comercial',
-          Icons.business_outlined,
-          [
-            const PestanaModuloAdmin(
+  Widget _sidebar() => Builder(
+    builder: (context) {
+      final store = AplicacionController.instance;
+      final groups = <String, List<(String, String, IconData)>>{
+        'GENERAL': [
+          (
+            'Resumen',
+            RutasAplicacion.dashboard,
+            Icons.space_dashboard_outlined,
+          ),
+          ('Mi perfil', RutasAplicacion.adminProfile, Icons.person_outline),
+        ],
+        'GESTIÓN': [
+          if (store.isAdministrator)
+            (
               'Empresas y publicidad',
               RutasAplicacion.adminCommerce,
+              Icons.business_outlined,
+            ),
+          if (store.isAdministrator)
+            ('Usuarios', RutasAplicacion.user, Icons.people_outline),
+          if (store.canReview)
+            (
+              'Tutores',
+              RutasAplicacion.adminApplications,
+              Icons.school_outlined,
+            ),
+          if (store.canModerate) ...[
+            (
+              'Formación',
+              RutasAplicacion.adminTutorials,
+              Icons.menu_book_outlined,
+            ),
+            (
+              'Marketplace',
+              RutasAplicacion.adminMarket,
+              Icons.storefront_outlined,
+            ),
+            (
+              'Atención y revisión',
+              RutasAplicacion.adminSupport,
+              Icons.support_agent_outlined,
             ),
           ],
-        ),
-        (
-          'Configuración',
-          Icons.tune_outlined,
-          [
-            ...ModulosAdministracion.configuration,
-            const PestanaModuloAdmin(
+          if (store.isAdministrator)
+            (
+              'Configuración',
+              RutasAplicacion.adminCatalogs,
+              Icons.tune_outlined,
+            ),
+          if (store.isAdministrator)
+            (
               'Conversaciones',
               RutasAplicacion.adminConversations,
+              Icons.forum_outlined,
             ),
-          ],
-        ),
-      ],
-    ];
+        ],
+      };
+      bool selected(String route) =>
+          current == route ||
+          (current != RutasAplicacion.settings &&
+              route != RutasAplicacion.settings &&
+              ModulosAdministracion.tabs(
+                current,
+              ).any((tab) => tab.route == route));
+      void go(String route) {
+        if (Scaffold.maybeOf(context)?.isDrawerOpen == true) {
+          Navigator.pop(context);
+        }
+        NavegadorAplicacion.go(context, route);
+      }
 
-    Iterable<PestanaModuloAdmin> allowed(List<PestanaModuloAdmin> tabs) =>
-        tabs.where(
-          (tab) =>
-              store.isAdministrator ||
-              !const [
-                RutasAplicacion.adminTrainingAreas,
-                RutasAplicacion.adminMarketCategories,
-                RutasAplicacion.adminCourseConversations,
-                RutasAplicacion.adminMarketConversations,
-              ].contains(tab.route),
-        );
-    void go(String target) => NavegadorAplicacion.go(context, target);
-    PopupMenuItem<String> entry(PestanaModuloAdmin tab) =>
-        PopupMenuItem(value: tab.route, child: Text(tab.label));
-
-    return Material(
-      color: Colors.white,
-      elevation: 1,
-      shadowColor: ColoresAplicacion.line,
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: wide ? 22 : 12),
-        child: SizedBox(
-          height: 64,
-          child: Row(
-            children: [
-              InkWell(
-                borderRadius: BorderRadius.circular(6),
-                onTap: () => go(RutasAplicacion.dashboard),
-                child: const LogoMarca(compact: true),
-              ),
-              const SizedBox(width: 12),
-              if (wide)
-                Expanded(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        TextButton.icon(
-                          onPressed: () => go(RutasAplicacion.dashboard),
-                          icon: const Icon(
-                            Icons.space_dashboard_outlined,
-                            size: 17,
-                          ),
-                          label: const Text('Resumen'),
+      return Material(
+        color: const Color(0xFF272727),
+        child: Column(
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(22, 28, 22, 22),
+              child: MarcaCompleta(onDark: true),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
+                children: [
+                  for (final group in groups.entries.where(
+                    (e) => e.value.isNotEmpty,
+                  )) ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 15, 8, 9),
+                      child: Text(
+                        group.key,
+                        style: const TextStyle(
+                          color: Color(0xFF9C9C9C),
+                          fontSize: 9,
+                          letterSpacing: 1.2,
+                          fontWeight: FontWeight.w600,
                         ),
-                        for (final (label, icon, tabs) in groups)
-                          PopupMenuButton<String>(
-                            tooltip: label,
-                            position: PopupMenuPosition.under,
-                            onSelected: go,
-                            itemBuilder: (_) =>
-                                allowed(tabs).map(entry).toList(),
+                      ),
+                    ),
+                    for (final link in group.value)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Material(
+                          color: selected(link.$2)
+                              ? Colors.white
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(8),
+                            onTap: () => go(link.$2),
                             child: Padding(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 9,
+                                horizontal: 15,
                                 vertical: 12,
                               ),
                               child: Row(
-                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(icon, size: 16),
-                                  const SizedBox(width: 5),
-                                  Text(
-                                    label,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      color:
-                                          tabs.any(
-                                            (tab) =>
-                                                tab.route == route ||
-                                                tab.route == current,
-                                          )
-                                          ? ColoresAplicacion.blue
-                                          : ColoresAplicacion.ink,
-                                      fontSize: 12,
+                                  Icon(
+                                    link.$3,
+                                    size: 19,
+                                    color: selected(link.$2)
+                                        ? ColoresAplicacion.coral
+                                        : Colors.white70,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      link.$1,
+                                      style: TextStyle(
+                                        color: selected(link.$2)
+                                            ? ColoresAplicacion.ink
+                                            : Colors.white70,
+                                        fontSize: 12,
+                                        fontWeight: selected(link.$2)
+                                            ? FontWeight.w600
+                                            : FontWeight.w400,
+                                      ),
                                     ),
                                   ),
-                                  const Icon(Icons.expand_more, size: 15),
+                                  if (selected(link.$2))
+                                    const Icon(
+                                      Icons.circle,
+                                      size: 6,
+                                      color: ColoresAplicacion.ink,
+                                    ),
                                 ],
                               ),
                             ),
                           ),
-                      ],
-                    ),
-                  ),
-                )
-              else
-                PopupMenuButton<String>(
-                  tooltip: 'Navegar por administración',
-                  icon: const Icon(Icons.menu_rounded),
-                  position: PopupMenuPosition.under,
-                  onSelected: go,
-                  itemBuilder: (_) => [
-                    entry(
-                      const PestanaModuloAdmin(
-                        'Resumen',
-                        RutasAplicacion.dashboard,
-                      ),
-                    ),
-                    for (final (label, _, tabs) in groups) ...[
-                      const PopupMenuDivider(),
-                      PopupMenuItem<String>(
-                        enabled: false,
-                        child: Text(
-                          label,
-                          style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
                       ),
-                      ...allowed(tabs).map(entry),
-                    ],
                   ],
-                ),
-              if (!wide) const Spacer(),
-              const BotonNotificaciones(),
-              const SizedBox(width: 8),
-              PopupMenuButton<String>(
-                tooltip: 'Mi perfil administrativo',
-                position: PopupMenuPosition.under,
-                onSelected: (target) {
-                  if (target != 'logout') {
-                    go(target);
-                    return;
-                  }
-                  runApiAction(context, () async {
-                    await store.logout();
-                    if (context.mounted) go(RutasAplicacion.home);
-                  });
-                },
-                itemBuilder: (_) => [
-                  entry(
-                    const PestanaModuloAdmin(
-                      'Mi perfil',
-                      RutasAplicacion.adminProfile,
-                    ),
-                  ),
-                  entry(
-                    const PestanaModuloAdmin(
-                      'Preferencias',
-                      '${RutasAplicacion.adminProfile}?tab=preferences',
-                    ),
-                  ),
-                  entry(
-                    const PestanaModuloAdmin(
-                      'Seguridad y sesiones',
-                      '${RutasAplicacion.adminProfile}?tab=security',
-                    ),
-                  ),
-                  entry(
-                    const PestanaModuloAdmin(
-                      'Ver sitio público',
-                      RutasAplicacion.home,
-                    ),
-                  ),
-                  const PopupMenuDivider(),
-                  entry(const PestanaModuloAdmin('Cerrar sesión', 'logout')),
                 ],
-                child: AvatarAdmin(
-                  name: user?.name ?? 'U',
-                  fileId: user?.avatarId,
-                ),
               ),
-            ],
-          ),
+            ),
+            const Divider(color: Colors.white12, height: 1),
+            ListTile(
+              dense: true,
+              leading: const Icon(
+                Icons.open_in_new,
+                color: Colors.white60,
+                size: 18,
+              ),
+              title: const Text(
+                'Ver sitio público',
+                style: TextStyle(color: Colors.white70, fontSize: 11),
+              ),
+              onTap: () => go(RutasAplicacion.home),
+            ),
+            ListTile(
+              dense: true,
+              leading: const Icon(
+                Icons.logout,
+                color: Colors.white60,
+                size: 18,
+              ),
+              title: const Text(
+                'Cerrar sesión',
+                style: TextStyle(color: Colors.white70, fontSize: 11),
+              ),
+              onTap: () => runApiAction(context, () async {
+                await store.logout();
+                if (context.mounted) {
+                  NavegadorAplicacion.go(context, RutasAplicacion.home);
+                }
+              }),
+            ),
+            const SizedBox(height: 12),
+          ],
         ),
-      ),
-    );
-  }
+      );
+    },
+  );
 }
 
+/// Cabecera consistente; el perfil permanece dentro del panel administrativo.
 class BarraSuperiorAdmin extends StatelessWidget {
   const BarraSuperiorAdmin({
     super.key,
@@ -312,23 +330,67 @@ class BarraSuperiorAdmin extends StatelessWidget {
   });
   final String title;
   final String subtitle;
-
   @override
-  Widget build(BuildContext context) => Align(
-    alignment: Alignment.centerLeft,
-    child: Padding(
-      padding: const EdgeInsets.fromLTRB(22, 18, 22, 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: const TextStyle(color: ColoresAplicacion.muted),
+  Widget build(BuildContext context) {
+    final user = AplicacionController.instance.currentUser;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(bottom: BorderSide(color: ColoresAplicacion.line)),
           ),
-        ],
-      ),
-    ),
-  );
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 21,
+                        color: ColoresAplicacion.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: ColoresAplicacion.muted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (Scaffold.maybeOf(context)?.hasDrawer != true)
+                const BotonNotificaciones(),
+              const SizedBox(width: 8),
+              Tooltip(
+                message: 'Mi perfil administrativo',
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(24),
+                  onTap: () => NavegadorAplicacion.go(
+                    context,
+                    RutasAplicacion.adminProfile,
+                  ),
+                  child: AvatarAdmin(
+                    name: user?.name ?? 'U',
+                    fileId: user?.avatarId,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        PestanasAdministracion(
+          current: ModalRoute.of(context)?.settings.name ?? '',
+        ),
+      ],
+    );
+  }
 }

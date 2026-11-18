@@ -111,14 +111,6 @@ class _CatalogoRemotoState extends State<CatalogoRemoto> {
                     spacing: 12,
                     runSpacing: 8,
                     children: [
-                      OutlinedButton.icon(
-                        onPressed: () => NavegadorAplicacion.go(
-                          context,
-                          '${RutasAplicacion.tutoringRequests}?new=1',
-                        ),
-                        icon: const Icon(Icons.support_agent, size: 18),
-                        label: const Text('Solicitar tutoría sobre un tema'),
-                      ),
                       TextButton.icon(
                         onPressed: () => NavegadorAplicacion.go(
                           context,
@@ -133,7 +125,7 @@ class _CatalogoRemotoState extends State<CatalogoRemoto> {
               const SizedBox(height: 8),
               Text(
                 widget.tutorials
-                    ? 'Aprende con una ruta clara y todo tu material organizado.'
+                    ? 'Busca una tutoría publicada, revisa el temario y solicita acceso desde su ficha.'
                     : 'Explora los artículos y conversa directamente con quien los publica.',
                 style: const TextStyle(
                   color: ColoresAplicacion.muted,
@@ -150,10 +142,18 @@ class _CatalogoRemotoState extends State<CatalogoRemoto> {
                     width: 260,
                     child: TextField(
                       controller: _search,
-                      decoration: const InputDecoration(
-                        hintText: 'Buscar',
-                        prefixIcon: Icon(Icons.search),
+                      decoration: InputDecoration(
+                        labelText: widget.tutorials
+                            ? 'Buscar tutorías'
+                            : 'Buscar artículos',
+                        hintText: widget.tutorials ? 'Tema o título' : null,
+                        prefixIcon: const Icon(Icons.search),
                       ),
+                      textInputAction: TextInputAction.search,
+                      onSubmitted: (_) {
+                        _debounce?.cancel();
+                        _load();
+                      },
                       onChanged: (_) {
                         _debounce?.cancel();
                         _debounce = Timer(
@@ -229,17 +229,24 @@ class _CatalogoRemotoState extends State<CatalogoRemoto> {
                           ),
                   ),
                   SizedBox(
-                    width: 180,
+                    width: 200,
                     child: DropdownButtonFormField<String>(
+                      isExpanded: true,
                       initialValue: _sort,
                       items: const [
                         DropdownMenuItem(
                           value: 'recent',
-                          child: Text('Más recientes'),
+                          child: Text(
+                            'Más recientes',
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                         DropdownMenuItem(
                           value: 'popular',
-                          child: Text('Más populares'),
+                          child: Text(
+                            'Más populares',
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                       onChanged: (value) {
@@ -299,7 +306,11 @@ class _CatalogoRemotoState extends State<CatalogoRemoto> {
               const SizedBox(height: 20),
               if (items.isEmpty)
                 EstadoVacioApi(
-                  message: 'No hay publicaciones para mostrar.',
+                  message: widget.tutorials
+                      ? (_search.text.trim().isNotEmpty || _category.isNotEmpty
+                            ? 'No encontramos tutorías con esa búsqueda. Prueba otro tema o cambia el área.'
+                            : 'Aún no hay tutorías publicadas.')
+                      : 'No hay publicaciones para mostrar.',
                   loading: _store.loading,
                 )
               else if (widget.tutorials && items.length == 1 && ranking)

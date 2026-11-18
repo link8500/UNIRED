@@ -40,20 +40,30 @@ class PerfilView extends StatelessWidget {
         if (asAdmin) {
           return EstructuraAdministracion(
             current: RutasAplicacion.adminProfile,
-            child: SingleChildScrollView(
-              child: SeccionPagina(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 28,
+            child: Column(
+              children: [
+                BarraSuperiorAdmin(
+                  title: section.label,
+                  subtitle: 'Administración / Mi cuenta',
                 ),
-                child: user == null
-                    ? const EstadoVacioApi(
-                        message: 'Inicia sesión para ver tu cuenta.',
-                      )
-                    : section == SeccionCuenta.profile
-                    ? _perfilAdministrativo(context, user)
-                    : _panel(context, user, section),
-              ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: SeccionPagina(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 28,
+                      ),
+                      child: user == null
+                          ? const EstadoVacioApi(
+                              message: 'Inicia sesión para ver tu cuenta.',
+                            )
+                          : section == SeccionCuenta.profile
+                          ? _perfilAdministrativo(context, user)
+                          : _panel(context, user, section),
+                    ),
+                  ),
+                ),
+              ],
             ),
           );
         }
@@ -124,11 +134,6 @@ class PerfilView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'Mi perfil administrativo',
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-        const SizedBox(height: 18),
         SuperficieAdmin(
           padding: const EdgeInsets.all(24),
           child: Row(
@@ -228,7 +233,7 @@ class PerfilView extends StatelessWidget {
         ListTile(
           dense: true,
           leading: const Icon(Icons.school_outlined, size: 19),
-          title: const Text('Solicitudes de tutoría'),
+          title: const Text('Historial de solicitudes de ayuda'),
           onTap: () => NavegadorAplicacion.go(
             context,
             asAdmin

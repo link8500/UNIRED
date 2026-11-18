@@ -42,7 +42,9 @@ class _LectorLeccionState extends State<LectorLeccion> with RouteAware {
   late final _details = AplicacionController.instance.api.object(
     '/courses/${widget.courseId}/lessons/${widget.lessonId}',
   );
-  VideoPlayerController? _video;
+  final _player = ValueNotifier<VideoPlayerController?>(null);
+  VideoPlayerController? get _video => _player.value;
+  bool _expandedVideo = false;
   Timer? _ticketTimer;
   String? _error;
   bool _renewing = false;
@@ -75,6 +77,7 @@ class _LectorLeccionState extends State<LectorLeccion> with RouteAware {
     NavegadorAplicacion.visibilityObserver.unsubscribe(this);
     _ticketTimer?.cancel();
     _video?.dispose();
+    _player.dispose();
     super.dispose();
   }
 
@@ -82,9 +85,6 @@ class _LectorLeccionState extends State<LectorLeccion> with RouteAware {
     if (_renewing || !mounted) return;
     _renewing = true;
     final old = _video;
-    final position = old?.value.position ?? Duration.zero;
-    final playing = old?.value.isPlaying ?? false;
-    final speed = old?.value.playbackSpeed ?? 1.0;
     VideoPlayerController? candidate;
     try {
       final store = AplicacionController.instance;
@@ -94,19 +94,26 @@ class _LectorLeccionState extends State<LectorLeccion> with RouteAware {
       final controller = VideoPlayerController.networkUrl(uri);
       candidate = controller;
       await controller.initialize();
-      await controller.setPlaybackSpeed(speed);
-      await controller.seekTo(position);
-      if (playing) await controller.play();
+      final previous = old?.value;
+      await controller.setVolume(previous?.volume ?? 1.0);
+      await controller.setPlaybackSpeed(previous?.playbackSpeed ?? 1.0);
+      await controller.seekTo(previous?.position ?? Duration.zero);
+      if (previous?.isPlaying == true) await controller.play();
       if (!mounted) {
         await controller.dispose();
         return;
       }
       setState(() {
-        _video = controller;
+        _player.value = controller;
         _videoFile = id;
         _error = null;
       });
-      await old?.dispose();
+      if (old != null) {
+        // Deja que ambas vistas se reconecten antes de desmontar la anterior.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          unawaited(old.dispose());
+        });
+      }
       _ticketTimer?.cancel();
       if (store.currentUser != null) {
         _ticketTimer = Timer.periodic(
@@ -134,6 +141,179 @@ class _LectorLeccionState extends State<LectorLeccion> with RouteAware {
           ),
         ),
       );
+
+  Future<void> _expandVideo() async {
+    if (_expandedVideo) return;
+    setState(() => _expandedVideo = true);
+    try {
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        useSafeArea: false,
+        builder: (dialogContext) => Dialog.fullscreen(
+          backgroundColor: const Color(0xFF172130),
+          child: SafeArea(
+            child: ValueListenableBuilder(
+              valueListenable: _player,
+              builder: (_, controller, _) => controller == null
+                  ? const SizedBox.shrink()
+                  : _playback(
+                      controller,
+                      onResize: () => Navigator.of(dialogContext).pop(),
+                      expanded: true,
+                    ),
+            ),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _expandedVideo = false);
+    }
+  }
+
+  Widget _playback(
+    VideoPlayerController controller, {
+    required VoidCallback onResize,
+    bool expanded = false,
+  }) => ValueListenableBuilder<VideoPlayerValue>(
+    valueListenable: controller,
+    builder: (_, value, _) {
+      final player = Center(
+        child: AspectRatio(
+          aspectRatio: value.aspectRatio,
+          child: VideoPlayer(controller),
+        ),
+      );
+      final volumeIcon = value.volume == 0 ? Icons.volume_off : Icons.volume_up;
+      return Column(
+        mainAxisSize: expanded ? MainAxisSize.max : MainAxisSize.min,
+        children: [
+          if (expanded)
+            Expanded(child: player)
+          else
+            _videoFrame(
+              aspectRatio: value.aspectRatio,
+              child: VideoPlayer(controller),
+            ),
+          Material(
+            color: const Color(0xFF172130),
+            child: IconTheme(
+              data: const IconThemeData(color: Colors.white),
+              child: DefaultTextStyle(
+                style: const TextStyle(color: Colors.white, fontSize: 12),
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: VideoProgressIndicator(
+                        controller,
+                        allowScrubbing: true,
+                      ),
+                    ),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        IconButton(
+                          tooltip: value.isPlaying
+                              ? 'Pausar video'
+                              : 'Reproducir video',
+                          onPressed: () => value.isPlaying
+                              ? controller.pause()
+                              : controller.play(),
+                          icon: Icon(
+                            value.isPlaying ? Icons.pause : Icons.play_arrow,
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Retroceder 10 segundos',
+                          onPressed: () => controller.seekTo(
+                            Duration(
+                              seconds: math.max(
+                                0,
+                                value.position.inSeconds - 10,
+                              ),
+                            ),
+                          ),
+                          icon: const Icon(Icons.replay_10),
+                        ),
+                        IconButton(
+                          tooltip: 'Avanzar 10 segundos',
+                          onPressed: () => controller.seekTo(
+                            Duration(
+                              seconds: math.min(
+                                value.duration.inSeconds,
+                                value.position.inSeconds + 10,
+                              ),
+                            ),
+                          ),
+                          icon: const Icon(Icons.forward_10),
+                        ),
+                        Text(
+                          '${lessonTime(value.position)} / ${lessonTime(value.duration)}',
+                        ),
+                        IconButton(
+                          tooltip: value.volume == 0
+                              ? 'Activar sonido'
+                              : 'Silenciar',
+                          onPressed: () => controller.setVolume(
+                            value.volume == 0 ? _lastVolume : 0,
+                          ),
+                          icon: Icon(volumeIcon),
+                        ),
+                        SizedBox(
+                          width: 110,
+                          child: Tooltip(
+                            message: 'Volumen',
+                            child: Slider(
+                              value: value.volume,
+                              label: '${(value.volume * 100).round()} %',
+                              onChanged: (volume) {
+                                if (volume > 0) _lastVolume = volume;
+                                unawaited(controller.setVolume(volume));
+                              },
+                              semanticFormatterCallback: (volume) =>
+                                  'Volumen ${(volume * 100).round()} por ciento',
+                            ),
+                          ),
+                        ),
+                        PopupMenuButton<double>(
+                          tooltip: 'Velocidad de reproducción',
+                          onSelected: controller.setPlaybackSpeed,
+                          itemBuilder: (_) => [
+                            for (final speed in [0.75, 1.0, 1.25, 1.5, 2.0])
+                              PopupMenuItem(
+                                value: speed,
+                                child: Text('${speed}x'),
+                              ),
+                          ],
+                          child: Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: Text('${value.playbackSpeed}x'),
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: expanded
+                              ? 'Salir de pantalla completa'
+                              : 'Pantalla completa',
+                          onPressed: onResize,
+                          icon: Icon(
+                            expanded ? Icons.fullscreen_exit : Icons.fullscreen,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    },
+  );
+
+  double _lastVolume = 1;
 
   @override
   Widget build(BuildContext context) => FutureBuilder<Json>(
@@ -182,85 +362,12 @@ class _LectorLeccionState extends State<LectorLeccion> with RouteAware {
                   ),
                 )
               else
-                ValueListenableBuilder<VideoPlayerValue>(
-                  valueListenable: _video!,
-                  builder: (_, value, _) => Column(
-                    children: [
-                      _videoFrame(
-                        aspectRatio: value.aspectRatio,
-                        child: VideoPlayer(_video!),
-                      ),
-                      VideoProgressIndicator(_video!, allowScrubbing: true),
-                      Wrap(
-                        alignment: WrapAlignment.center,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        spacing: 12,
-                        children: [
-                          IconButton(
-                            tooltip: 'Retroceder 10 segundos',
-                            onPressed: () => _video!.seekTo(
-                              Duration(
-                                seconds: math.max(
-                                  0,
-                                  value.position.inSeconds - 10,
-                                ),
-                              ),
-                            ),
-                            icon: const Icon(Icons.replay_10),
-                          ),
-                          IconButton(
-                            tooltip: value.isPlaying
-                                ? 'Pausar video'
-                                : 'Reproducir video',
-                            icon: Icon(
-                              value.isPlaying ? Icons.pause : Icons.play_arrow,
-                            ),
-                            onPressed: () => value.isPlaying
-                                ? _video!.pause()
-                                : _video!.play(),
-                          ),
-                          IconButton(
-                            tooltip: 'Avanzar 10 segundos',
-                            onPressed: () => _video!.seekTo(
-                              Duration(
-                                seconds: math.min(
-                                  value.duration.inSeconds,
-                                  value.position.inSeconds + 10,
-                                ),
-                              ),
-                            ),
-                            icon: const Icon(Icons.forward_10),
-                          ),
-                          Text(
-                            '${lessonTime(value.position)} / ${lessonTime(value.duration)}',
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                          PopupMenuButton<double>(
-                            tooltip: 'Velocidad de reproducción',
-                            onSelected: _video!.setPlaybackSpeed,
-                            itemBuilder: (_) => [
-                              for (final speed in [0.75, 1.0, 1.25, 1.5, 2.0])
-                                PopupMenuItem(
-                                  value: speed,
-                                  child: Text('${speed}x'),
-                                ),
-                            ],
-                            child: Padding(
-                              padding: const EdgeInsets.all(10),
-                              child: Text(
-                                '${value.playbackSpeed}x',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+                _expandedVideo
+                    ? _videoFrame(
+                        aspectRatio: _video!.value.aspectRatio,
+                        child: const ColoredBox(color: Color(0xFF172130)),
+                      )
+                    : _playback(_video!, onResize: _expandVideo),
             ] else
               SelectableText(textValue(row['contenidoTexto'])),
             const SizedBox(height: 16),

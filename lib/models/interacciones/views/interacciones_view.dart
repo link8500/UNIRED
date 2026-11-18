@@ -6,7 +6,6 @@ import 'package:unired/core/constantes/estado_publicacion.dart';
 import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
 import 'package:unired/models/aplicacion/navegacion/navegador_aplicacion.dart';
 import 'package:unired/models/comercial/widgets/pago_demo.dart';
-import 'package:unired/models/interacciones/widgets/solicitar_tutoria.dart';
 import 'package:unired/models/interacciones/widgets/valorar_interaccion.dart';
 import 'package:unired/shared/temas/colores_aplicacion.dart';
 import 'package:unired/shared/widgets/formulario_api.dart';
@@ -20,10 +19,9 @@ class InteraccionesView extends StatefulWidget {
     super.key,
     this.asAdmin = false,
     this.tutorials = false,
-    this.startNew = false,
     this.initialTab = 0,
   });
-  final bool tutorials, startNew, asAdmin;
+  final bool tutorials, asAdmin;
   final int initialTab;
   @override
   State<InteraccionesView> createState() => _InteraccionesViewState();
@@ -32,7 +30,6 @@ class InteraccionesView extends StatefulWidget {
 class _InteraccionesViewState extends State<InteraccionesView> {
   final _store = AplicacionController.instance;
   late Future<PaginaApi> _data = _load();
-  late bool _new = widget.startNew;
   late int _tab = widget.initialTab;
   int _page = 1, _revision = 0;
   String _state = '';
@@ -58,7 +55,7 @@ class _InteraccionesViewState extends State<InteraccionesView> {
       return;
     }
     _revision = _store.notificationsRevision;
-    if (!_new && _material.isEmpty) {
+    if (_material.isEmpty) {
       setState(() {
         _data = _load(foreground: false);
       });
@@ -137,7 +134,7 @@ class _InteraccionesViewState extends State<InteraccionesView> {
   @override
   Widget build(BuildContext context) => MarcoGestion(
     asAdmin: widget.asAdmin,
-    title: widget.tutorials ? 'Solicitudes de tutoría' : 'Mis ofertas',
+    title: widget.tutorials ? 'Historial de solicitudes' : 'Mis ofertas',
     subtitle: 'Mi cuenta',
     route: widget.asAdmin
         ? RutasAplicacion.adminProfile
@@ -152,7 +149,7 @@ class _InteraccionesViewState extends State<InteraccionesView> {
           children: [
             Text(
               widget.tutorials
-                  ? 'Solicitudes de tutoría'
+                  ? 'Historial de solicitudes'
                   : 'Mis ofertas del market',
               style: const TextStyle(
                 fontSize: 29,
@@ -163,32 +160,22 @@ class _InteraccionesViewState extends State<InteraccionesView> {
             const SizedBox(height: 8),
             Text(
               widget.tutorials
-                  ? 'Pide ayuda, responde a estudiantes y sigue tus tutorías en un mismo espacio.'
+                  ? 'Aquí puedes continuar las solicitudes anteriores. Si quieres empezar a estudiar un tema, busca una tutoría publicada.'
                   : 'Revisa las propuestas recibidas y enviadas. El chat se habilita después de aceptar la oferta.',
             ),
             const SizedBox(height: 20),
-            if (widget.tutorials && !_new)
+            if (widget.tutorials)
               Align(
                 alignment: Alignment.centerLeft,
                 child: FilledButton.icon(
-                  onPressed: () => setState(() => _new = true),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Pedir ayuda a un tutor'),
+                  onPressed: () => NavegadorAplicacion.go(
+                    context,
+                    RutasAplicacion.tutorials,
+                  ),
+                  icon: const Icon(Icons.search),
+                  label: const Text('Buscar tutorías'),
                 ),
               ),
-            if (_new) ...[
-              const SizedBox(height: 20),
-              SolicitarTutoria(
-                finished: () => setState(() {
-                  _new = false;
-                  _tab = 0;
-                  _page = 1;
-                  _state = '';
-                  _data = _load();
-                }),
-              ),
-              const SizedBox(height: 24),
-            ],
             const SizedBox(height: 16),
             Wrap(
               spacing: 10,

@@ -192,13 +192,15 @@ class NavegadorAplicacion {
       ),
       RutasAplicacion.search => const BusquedaView(),
       RutasAplicacion.adminOffers => const InteraccionesView(asAdmin: true),
+      RutasAplicacion.adminTutoringRequests
+          when uri?.queryParameters['new'] == '1' =>
+        const TutoriasView(),
       RutasAplicacion.adminTutoringRequests => InteraccionesView(
         asAdmin: true,
         tutorials: true,
         initialTab:
             {'disponibles': 1, 'impartidas': 2}[uri?.queryParameters['view']] ??
             0,
-        startNew: uri?.queryParameters['new'] == '1',
       ),
       RutasAplicacion.adminWallet => const CarteraView(asAdmin: true),
       RutasAplicacion.adminBusiness => EmpresasView(
@@ -206,12 +208,14 @@ class NavegadorAplicacion {
         companyId: uri?.queryParameters['id'],
       ),
       RutasAplicacion.offers => const InteraccionesView(),
+      RutasAplicacion.tutoringRequests
+          when uri?.queryParameters['new'] == '1' =>
+        const TutoriasView(),
       RutasAplicacion.tutoringRequests => InteraccionesView(
         tutorials: true,
         initialTab:
             {'disponibles': 1, 'impartidas': 2}[uri?.queryParameters['view']] ??
             0,
-        startNew: uri?.queryParameters['new'] == '1',
       ),
       RutasAplicacion.wallet => const CarteraView(),
       RutasAplicacion.business => EmpresasView(

@@ -18,6 +18,7 @@ import 'package:unired/shared/widgets/componentes_administracion.dart';
 import 'package:unired/models/tutorias/widgets/lector_leccion.dart';
 import 'package:unired/models/tutorias/widgets/aula_curso.dart';
 import 'package:unired/shared/widgets/formulario_api.dart';
+import 'package:unired/shared/widgets/formulario_resena.dart';
 import 'package:unired/shared/widgets/widgets_api.dart';
 import 'package:unired/shared/widgets/coleccion_api.dart';
 import 'package:unired/models/interacciones/widgets/valorar_interaccion.dart';
@@ -445,28 +446,9 @@ class _CursoViewState extends State<CursoView> with RouteAware {
                         : const SizedBox.shrink(),
                   ),
                   const SizedBox(height: 16),
-                  FormularioApi(
+                  FormularioResena(
                     title: 'Mi reseña',
-                    fields: const [
-                      CampoApi(
-                        'puntuacion',
-                        'Puntuación',
-                        kind: TipoCampoApi.integerChoice,
-                        choices: {
-                          '1': '1',
-                          '2': '2',
-                          '3': '3',
-                          '4': '4',
-                          '5': '5',
-                        },
-                      ),
-                      CampoApi(
-                        'comentario',
-                        'Comentario',
-                        required: false,
-                        lines: 3,
-                      ),
-                    ],
+                    success: 'Tu reseña quedó guardada.',
                     submit: (data) async {
                       await _store.api.object(
                         '/me/enrollments/$enrollmentId/review',

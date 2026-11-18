@@ -328,15 +328,14 @@ class _AcreditacionViewState extends State<AcreditacionView> {
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              if (requiredTypes.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Text(
-                    editable
-                        ? 'Adjunta los documentos de la lista en PDF o imagen.'
-                        : _stateLabel(row['estado']),
-                  ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Text(
+                  editable
+                      ? 'Adjunta los documentos de la lista en PDF o imagen.'
+                      : _stateLabel(row['estado']),
                 ),
+              ),
               for (final d in widget.review ? documents : latest.values)
                 ListTile(
                   contentPadding: EdgeInsets.zero,

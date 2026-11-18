@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:unired/core/constantes/constantes_aplicacion.dart';
 import 'package:unired/models/comercial/widgets/promociones_comunidad.dart';
+import 'package:unired/models/inicio/widgets/anuncio_inicio.dart';
 
 import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
 import 'package:unired/models/aplicacion/navegacion/navegador_aplicacion.dart';
@@ -83,13 +84,47 @@ class _InicioViewState extends State<InicioView> {
                   ],
                 ),
               ),
+              if (featured.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: LayoutBuilder(
+                    builder: (_, size) {
+                      final format = FormatoAnuncioInicio.entreSecciones(
+                        size.maxWidth,
+                      );
+                      if (format == null) return const SizedBox.shrink();
+                      return Center(
+                        child: AnuncioInicio(
+                          key: ValueKey(format),
+                          format: format,
+                        ),
+                      );
+                    },
+                  ),
+                ),
               SeccionPagina(
                 color: Colors.white,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 42,
                   vertical: 28,
                 ),
-                child: _tutorialSection(context),
+                child: LayoutBuilder(
+                  builder: (context, size) {
+                    final tutorials = _tutorialSection(context);
+                    if (size.maxWidth < 1080 || store.topTutorials.isEmpty) {
+                      return tutorials;
+                    }
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: tutorials),
+                        const AnuncioInicio(
+                          format: FormatoAnuncioInicio.vertical,
+                        ),
+                      ],
+                    );
+                  },
+                ),
               ),
             ],
           ),
@@ -140,15 +175,6 @@ class _InicioViewState extends State<InicioView> {
             ),
           ],
         ),
-        if (signedIn)
-          TextButton.icon(
-            onPressed: () => NavegadorAplicacion.go(
-              context,
-              '${RutasAplicacion.tutoringRequests}?new=1',
-            ),
-            icon: const Icon(Icons.add_circle_outline, size: 18),
-            label: const Text('Solicitar ayuda en una materia'),
-          ),
         if (signedIn)
           TextButton.icon(
             onPressed: () =>

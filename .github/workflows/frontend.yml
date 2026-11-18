@@ -21,6 +21,9 @@ jobs:
     env:
       # Esta dirección es pública y se incorpora al compilar Flutter Web.
       API_BASE_URL: https://unired-backend-mpl6.onrender.com/api/v1
+      ADSENSE_HOME_SLOT: ${{ vars.ADSENSE_HOME_SLOT || '7759915295' }}
+      ADSENSE_SQUARE_SLOT: ${{ vars.ADSENSE_SQUARE_SLOT || '7849872648' }}
+      ADSENSE_HORIZONTAL_SLOT: ${{ vars.ADSENSE_HORIZONTAL_SLOT || '1064972445' }}
     steps:
       - name: Obtener el código
         uses: actions/checkout@v7
@@ -47,7 +50,12 @@ jobs:
         run: flutter test --no-pub
 
       - name: Compilar la página con la API de Render
-        run: flutter build web --release --no-pub --dart-define=API_BASE_URL="$API_BASE_URL"
+        run: >-
+          flutter build web --release --no-pub
+          --dart-define=API_BASE_URL="$API_BASE_URL"
+          --dart-define=ADSENSE_HOME_SLOT="$ADSENSE_HOME_SLOT"
+          --dart-define=ADSENSE_SQUARE_SLOT="$ADSENSE_SQUARE_SLOT"
+          --dart-define=ADSENSE_HORIZONTAL_SLOT="$ADSENSE_HORIZONTAL_SLOT"
 
       # Las solicitudes de cambios solo verifican el proyecto.
       # La publicación ocurre después de las comprobaciones y solo desde main.

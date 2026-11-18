@@ -58,8 +58,8 @@ class _EspacioGestionViewState extends State<EspacioGestionView> {
     'applications' => (
       widget.view == 'history'
           ? 'Historial de solicitudes'
-          : 'Solicitudes de tutor',
-      'Documentación, formación y decisiones de revisión',
+          : 'Expedientes de acreditación',
+      'Revisa los documentos de quienes quieren impartir tutorías.',
       widget.view == 'history'
           ? RutasAplicacion.adminTutorHistory
           : RutasAplicacion.adminApplications,

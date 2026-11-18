@@ -13,7 +13,7 @@ class PestanaModuloAdmin {
 class ModulosAdministracion {
   static const tutors = [
     PestanaModuloAdmin(
-      'Solicitudes de tutor',
+      'Expedientes de acreditación',
       RutasAplicacion.adminApplications,
     ),
     PestanaModuloAdmin('Tutores autorizados', RutasAplicacion.adminTutors),
@@ -73,4 +73,37 @@ class ModulosAdministracion {
     PestanaModuloAdmin('Auditoría', RutasAplicacion.adminAudit),
     PestanaModuloAdmin('Preferencias', RutasAplicacion.settings),
   ];
+  static const profile = [
+    PestanaModuloAdmin('Mi perfil', RutasAplicacion.adminProfile),
+    PestanaModuloAdmin(
+      'Editar perfil',
+      '${RutasAplicacion.adminProfile}?tab=edit',
+    ),
+    PestanaModuloAdmin(
+      'Seguridad y sesiones',
+      '${RutasAplicacion.adminProfile}?tab=security',
+    ),
+    PestanaModuloAdmin(
+      'Preferencias',
+      '${RutasAplicacion.adminProfile}?tab=preferences',
+    ),
+  ];
+  static List<PestanaModuloAdmin> tabs(String current) {
+    final path = Uri.tryParse(current)?.path ?? current;
+    if (path == RutasAplicacion.adminAccreditation) return tutors;
+    for (final group in [
+      tutors,
+      training,
+      marketplace,
+      support,
+      users,
+      configuration,
+      profile,
+    ]) {
+      if (group.any((tab) => tab.route == current || tab.route == path)) {
+        return group;
+      }
+    }
+    return const [];
+  }
 }

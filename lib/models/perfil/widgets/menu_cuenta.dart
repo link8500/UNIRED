@@ -81,7 +81,7 @@ class MenuCuenta extends StatelessWidget {
         _section(SeccionCuenta.favorites),
         _item(
           RutasAplicacion.tutoringRequests,
-          'Solicitudes de tutoría',
+          'Historial de solicitudes de ayuda',
           Icons.school_outlined,
         ),
         _item(

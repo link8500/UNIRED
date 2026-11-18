@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:dio/dio.dart';
 import 'package:unired/main.dart';
 import 'package:unired/core/datos/remoto/cliente_api.dart';
+import 'package:unired/models/acreditaciones/views/acreditacion_view.dart';
 import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
 import 'package:unired/models/aplicacion/navegacion/navegador_aplicacion.dart';
 import 'package:unired/models/autenticacion/models/usuario_aplicacion.dart';
@@ -200,23 +201,50 @@ void main() {
     expect(find.text('Usuarios'), findsNothing);
     expect(tester.takeException(), isNull);
   });
-  testWidgets('el acceso conserva correo y contraseña sin credenciales simuladas', (
+  testWidgets('Quiero ser tutor de Inicio abre acreditación, no ayuda', (
     tester,
   ) async {
+    service.currentUser = const UsuarioAplicacion(
+      id: '1',
+      name: 'Estudiante',
+      email: 'estudiante@example.test',
+      university: 'UNAN',
+      roles: ['usuario'],
+    );
     await tester.pumpWidget(
       MaterialApp(
         theme: TemaAplicacion.light,
-        initialRoute: RutasAplicacion.login,
-        navigatorObservers: [NavegadorAplicacion.observer],
+        initialRoute: RutasAplicacion.home,
         onGenerateRoute: NavegadorAplicacion.onGenerateRoute,
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('CORREO ELECTRÓNICO'), findsOneWidget);
-    expect(find.text('Recordarme'), findsNothing);
-    expect(find.text('Google'), findsNothing);
-    expect(tester.takeException(), isNull);
+    final accreditation = find.text('Quiero ser tutor');
+    await tester.ensureVisible(accreditation);
+    await tester.tap(accreditation);
+    await tester.pumpAndSettle();
+    expect(find.byType(AcreditacionView), findsOneWidget);
+    expect(find.text('Acreditación para ser tutor'), findsOneWidget);
+    expect(find.text('¿Qué necesitas resolver?'), findsNothing);
   });
+  testWidgets(
+    'el acceso conserva correo y contraseña sin credenciales simuladas',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: TemaAplicacion.light,
+          initialRoute: RutasAplicacion.login,
+          navigatorObservers: [NavegadorAplicacion.observer],
+          onGenerateRoute: NavegadorAplicacion.onGenerateRoute,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('CORREO ELECTRÓNICO'), findsOneWidget);
+      expect(find.text('Recordarme'), findsNothing);
+      expect(find.text('Google'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
   testWidgets('seleccionar la misma ruta no agrega otra pantalla', (
     tester,
   ) async {
