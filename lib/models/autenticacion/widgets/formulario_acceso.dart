@@ -90,12 +90,11 @@ class _FormularioAccesoState extends State<FormularioAcceso> {
               await store.signIn(email: _email.text, password: _password.text);
             }
             if (!context.mounted) return;
-            NavegadorAplicacion.go(
-              context,
+            Navigator.of(context).pushReplacementNamed(
               store.currentUser?.verified != true
                   ? RutasAplicacion.verifyEmail
                   : widget.admin
-                  ? RutasAplicacion.dashboard
+                  ? RutasAplicacion.adminProfile
                   : RutasAplicacion.profile,
             );
           },

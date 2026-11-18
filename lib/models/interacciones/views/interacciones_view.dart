@@ -5,6 +5,7 @@ import 'package:unired/core/dominio/datos_api.dart';
 import 'package:unired/core/constantes/estado_publicacion.dart';
 import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
 import 'package:unired/models/aplicacion/navegacion/navegador_aplicacion.dart';
+import 'package:unired/models/comercial/widgets/pago_demo.dart';
 import 'package:unired/models/interacciones/widgets/solicitar_tutoria.dart';
 import 'package:unired/models/interacciones/widgets/valorar_interaccion.dart';
 import 'package:unired/shared/temas/colores_aplicacion.dart';
@@ -79,25 +80,77 @@ class _InteraccionesViewState extends State<InteraccionesView> {
   void _refresh() => setState(() {
     _data = _load();
   });
+  Future<void> _payRequest(Json row) async {
+    final payment = await mostrarPagoDemo(
+      context,
+      title: textValue(row['tema']),
+      amount: textValue(row['precio']),
+      operation: {'concepto': 'tutoria_solicitud', 'recursoId': row['id']},
+    );
+    if (!mounted || payment == null) return;
+    final receipt = jsonObject(payment['pago']);
+    _refresh();
+    await _showReceipt(
+      textValue(row['tema']),
+      receipt['importe'],
+      receipt['id'],
+      receipt['creadoEn'],
+    );
+  }
+
+  Future<void> _showReceipt(
+    String title,
+    Object? amount,
+    Object? id,
+    Object? createdAt,
+  ) {
+    final date = DateTime.tryParse(textValue(createdAt))?.toLocal();
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Comprobante de demostración'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title),
+            const SizedBox(height: 12),
+            Text('Importe simulado: C\$ ${textValue(amount)}'),
+            Text('Referencia: DEMO-${textValue(id)}'),
+            if (date != null)
+              Text(
+                MaterialLocalizations.of(dialogContext).formatMediumDate(date),
+              ),
+            const SizedBox(height: 12),
+            const Text('Sin validez fiscal.'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _decision(
     Json row,
     String state, {
     bool accept = false,
     bool ignore = false,
   }) async {
-    if (['cancelada', 'finalizada'].contains(state) || accept) {
+    if (['cancelada', 'finalizada'].contains(state)) {
       final ok = await AvisosAplicacion.show(
         context,
         kind: TipoAviso.warning,
-        title: accept
-            ? 'Aceptar tutoría'
-            : state == 'finalizada'
+        title: state == 'finalizada'
             ? 'Finalizar interacción'
             : 'Cancelar interacción',
-        message: accept
-            ? 'Se abrirá el chat y se descontará una comisión de prueba de C\$ ${row['comision']}. No se mueve dinero real.'
-            : 'La conversación se cerrará. El historial de la interacción seguirá disponible en tu cuenta.',
-        action: accept ? 'Aceptar tutoría' : 'Confirmar',
+        message:
+            'Se cerrará el chat. Podrás consultar el estado desde tu historial.',
+        action: 'Confirmar',
         cancel: 'Volver',
       );
       if (!ok || !mounted) return;
@@ -114,7 +167,6 @@ class _InteraccionesViewState extends State<InteraccionesView> {
         data: accept || ignore ? null : {'estado': state},
       );
       if (mounted) _refresh();
-      if (accept) await _store.refreshAccountData();
     });
   }
 
@@ -300,6 +352,10 @@ class _InteraccionesViewState extends State<InteraccionesView> {
           : (owner ? 'compradorNombre' : 'vendedorNombre')],
     );
     final title = textValue(row[request ? 'tema' : 'anuncioTitulo']);
+    final priced =
+        request && (double.tryParse(textValue(row['precio'])) ?? 0) > 0;
+    final requiresPayment = request && row['requierePagoDemo'] == true;
+    final paymentPending = requiresPayment && row['pagoDemoConfirmado'] != true;
     final courses = _store.myTutorials
         .where(
           (course) =>
@@ -313,20 +369,25 @@ class _InteraccionesViewState extends State<InteraccionesView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 12,
+              runSpacing: 4,
               children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 21,
-                      fontWeight: FontWeight.w700,
-                    ),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 21,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(width: 12),
-                Chip(label: Text(_label(state))),
+                Chip(
+                  label: Text(
+                    state == 'aceptada' && paymentPending
+                        ? 'Pago demo pendiente'
+                        : _label(state),
+                  ),
+                ),
               ],
             ),
             if (peerName.isNotEmpty)
@@ -343,7 +404,11 @@ class _InteraccionesViewState extends State<InteraccionesView> {
                     ? 'Revisa la propuesta. Al aceptarla se abrirá el chat con esta persona.'
                     : 'El autor está revisando tu propuesta. El chat se habilitará cuando la acepte.',
               'aceptada' =>
-                'Ya pueden conversar y acordar los detalles. Finaliza la interacción cuando hayan terminado.',
+                paymentPending
+                    ? (owner
+                          ? 'Tu tutor aceptó. Confirma el pago demo para continuar.'
+                          : 'En espera de que el estudiante confirme el pago demo.')
+                    : 'Ya pueden conversar y acordar los detalles. Finaliza la interacción cuando hayan terminado.',
               'finalizada' =>
                 'Interacción terminada. Puedes valorar tu experiencia y consultar el perfil de la otra persona.',
               'rechazada' =>
@@ -359,12 +424,12 @@ class _InteraccionesViewState extends State<InteraccionesView> {
               const SizedBox(height: 8),
               Text(textValue(row['descripcion'])),
               const SizedBox(height: 10),
-              Text(
-                'Cotización: C\$ ${textValue(row['precio'])}',
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-              if (!owner)
-                Text('Comisión de prueba: C\$ ${textValue(row['comision'])}'),
+              Text(switch ((priced, requiresPayment)) {
+                (false, _) => 'Gratuita',
+                (true, true) => 'Importe demo: C\$ ${textValue(row['precio'])}',
+                (true, false) =>
+                  'Importe registrado: C\$ ${textValue(row['precio'])}',
+              }, style: const TextStyle(fontWeight: FontWeight.w700)),
             ] else ...[
               Text(textValue(row['mensaje'])),
               const SizedBox(height: 10),
@@ -396,9 +461,9 @@ class _InteraccionesViewState extends State<InteraccionesView> {
                     child: const Text('Retirar oferta'),
                   ),
                 if (request && state == 'publicada' && !owner) ...[
-                  FilledButton(
-                    onPressed: () => _decision(row, 'aceptada', accept: true),
-                    child: const Text('Aceptar solicitud'),
+                  BotonAccionApi(
+                    label: 'Aceptar solicitud',
+                    action: () => _decision(row, 'aceptada', accept: true),
                   ),
                   OutlinedButton(
                     onPressed: () => _decision(row, '', ignore: true),
@@ -411,6 +476,12 @@ class _InteraccionesViewState extends State<InteraccionesView> {
                     child: const Text('Cancelar solicitud'),
                   ),
                 if (state == 'aceptada') ...[
+                  if (owner && paymentPending)
+                    FilledButton.icon(
+                      onPressed: () => _payRequest(row),
+                      icon: const Icon(Icons.credit_card_outlined, size: 17),
+                      label: const Text('Pagar con tarjeta de prueba'),
+                    ),
                   if (row['conversacionId'] != null)
                     FilledButton.icon(
                       onPressed: () => NavegadorAplicacion.go(
@@ -420,15 +491,27 @@ class _InteraccionesViewState extends State<InteraccionesView> {
                       icon: const Icon(Icons.forum_outlined, size: 17),
                       label: const Text('Abrir chat'),
                     ),
-                  OutlinedButton(
-                    onPressed: () => _decision(row, 'finalizada'),
-                    child: const Text('Finalizar'),
-                  ),
+                  if (!paymentPending)
+                    OutlinedButton(
+                      onPressed: () => _decision(row, 'finalizada'),
+                      child: const Text('Finalizar'),
+                    ),
                   TextButton(
                     onPressed: () => _decision(row, 'cancelada'),
                     child: const Text('Cancelar'),
                   ),
                 ],
+                if (request && owner && row['pagoDemoId'] != null)
+                  OutlinedButton.icon(
+                    onPressed: () => _showReceipt(
+                      title,
+                      row['precio'],
+                      row['pagoDemoId'],
+                      row['pagoDemoFecha'],
+                    ),
+                    icon: const Icon(Icons.receipt_long_outlined, size: 17),
+                    label: const Text('Ver comprobante'),
+                  ),
                 if (request &&
                     ['aceptada', 'finalizada'].contains(state) &&
                     row['cursoId'] != null)
@@ -443,6 +526,7 @@ class _InteraccionesViewState extends State<InteraccionesView> {
                 if (request &&
                     state == 'aceptada' &&
                     !owner &&
+                    !paymentPending &&
                     row['cursoId'] == null)
                   OutlinedButton.icon(
                     onPressed: () => setState(

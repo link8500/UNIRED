@@ -295,6 +295,63 @@ void main() {
     service.dispose();
   });
   test(
+    'el catálogo público y la carga secundaria no bloquean el inicio de sesión',
+    () async {
+      final catalogStarted = Completer<void>();
+      final catalog = Completer<TestReply>();
+      final privateData = Completer<TestReply>();
+      final finished = Completer<void>();
+      final adapter = TestAdapter((request) async {
+        switch (request.path) {
+          case '/listings':
+            if (!catalogStarted.isCompleted) catalogStarted.complete();
+            return catalog.future;
+          case '/auth/login':
+            return TestReply({
+              'accessToken': 'access',
+              'refreshToken': 'refresh',
+              'expiresIn': 900,
+            });
+          case '/me':
+            return TestReply({
+              'id': 1,
+              'nombre': 'Ana',
+              'email': 'ana@example.test',
+              'estado': 'activo',
+              'roles': ['usuario'],
+            });
+          case '/me/listings':
+            return privateData.future;
+          default:
+            return TestReply(page());
+        }
+      });
+      final store = AplicacionController(client: client(adapter));
+      addTearDown(store.dispose);
+      store.addListener(() {
+        if (store.accountDataError != null && !finished.isCompleted) {
+          finished.complete();
+        }
+      });
+      final initialized = store.initialize();
+      await catalogStarted.future;
+      await store.signIn(email: 'ana@example.test', password: 'prueba');
+      expect(store.currentUser?.name, 'Ana');
+      expect(store.loadingAccountData, isTrue);
+      catalog.complete(TestReply(page()));
+      await initialized;
+      expect(store.initialized, isTrue);
+      expect(store.lastError, isNull);
+      privateData.complete(
+        TestReply({'message': 'No disponible'}, status: 403),
+      );
+      await finished.future;
+      expect(store.accountDataError, isNotNull);
+      expect(store.currentUser?.name, 'Ana');
+      expect(store.api.hasSession, isTrue);
+    },
+  );
+  test(
     'la cuenta pendiente no consulta recursos que requieren verificación',
     () async {
       final adapter = TestAdapter((options) async {

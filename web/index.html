@@ -45,10 +45,8 @@
   <meta property="og:image" content="https://unired-link8500.netlify.app/icons/Icon-512.png">
   <meta property="og:url" content="https://unired-link8500.netlify.app/">
 
-  <!-- AdSense: identifica al editor y carga una sola vez el código de anuncios. -->
+  <!-- AdSense: identifica al editor. La portada carga el código de anuncios. -->
   <meta name="google-adsense-account" content="ca-pub-6670088332513129">
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6670088332513129"
-    crossorigin="anonymous"></script>
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -77,10 +75,10 @@
   <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-TWPB627P"
     height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
-  <!-- Presentación pública disponible antes de iniciar Flutter y sin JavaScript. -->
+  <!-- Portada pública y pantalla de carga de la aplicación. -->
   <div class="unired-start" id="presentacion-unired">
     <header class="unired-start-header">
-      <a class="unired-start-brand" href="#/home" aria-label="UniRed, inicio">
+      <a class="unired-start-brand" href="./" aria-label="UniRed, inicio">
         <img src="icons/Icon-192.png" width="42" height="42" alt="">
         <span>Uni<span class="unired-start-coral">Red</span></span>
       </a>
@@ -97,10 +95,10 @@
           <p class="unired-start-lead">Aprende, comparte y conecta.</p>
           <p class="unired-start-description">
             Encuentra tutorías, descubre publicaciones del marketplace y conversa
-            con otras personas de tu comunidad. UniRed es un proyecto universitario desarrollado en Nicaragua
-            que reúne tu aprendizaje y tus intercambios en un mismo lugar.
+            con otras personas de tu comunidad universitaria.
           </p>
-          <div class="unired-start-status" role="status" aria-live="polite" hidden>
+          <a id="abrir-unired" class="unired-start-open" href="#/home">Abrir UniRed</a>
+          <div id="carga-unired" class="unired-start-status" role="status" aria-live="polite" hidden>
             <span class="unired-start-indicator" aria-hidden="true"></span>
             <span id="estado-inicio-unired">Estamos abriendo UniRed…</span>
           </div>
@@ -127,17 +125,14 @@
       </section>
       <section class="unired-start-features" aria-label="Qué puedes hacer en UniRed">
         <article>
-          <span class="unired-start-number" aria-hidden="true">01</span>
           <h2>Tutorías y aprendizaje</h2>
-          <p>Consulta las ofertas de tutoría, solicita acceso y sigue los materiales y tu avance según tu inscripción.</p>
+          <p>Explora cursos y solicita ayuda en una materia. Cuando un tutor acepte, podrás conversar y consultar el material que comparta.</p>
         </article>
         <article>
-          <span class="unired-start-number" aria-hidden="true">02</span>
           <h2>Marketplace universitario</h2>
           <p>Explora artículos, publica lo que ofreces y contacta con la persona que vende para consultar los detalles.</p>
         </article>
         <article>
-          <span class="unired-start-number" aria-hidden="true">03</span>
           <h2>Conversaciones con contexto</h2>
           <p>Habla sobre una tutoría o publicación concreta y conserva el hilo de cada solicitud desde tu cuenta.</p>
         </article>
@@ -154,6 +149,5 @@
     </footer>
   </div>
   <script src="presentacion.js"></script>
-  <script id="inicio-flutter-unired" src="flutter_bootstrap.js" async></script>
 </body>
 </html>

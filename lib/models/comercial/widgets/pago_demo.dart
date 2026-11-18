@@ -40,6 +40,17 @@ class _PagoDemoState extends State<_PagoDemo> {
       _cvv = TextEditingController();
   final _nonce = const Uuid().v4();
   bool _sending = false;
+
+  void _fillTestCard() {
+    final year = ((DateTime.now().year + 1) % 100).toString().padLeft(2, '0');
+    setState(() {
+      _number.text = TarjetaDemo.numeroVisa;
+      _name.text = 'Persona de prueba';
+      _expiry.text = '12/$year';
+      _cvv.text = '123';
+    });
+  }
+
   @override
   void dispose() {
     for (final controller in [_number, _name, _expiry, _cvv]) {
@@ -154,6 +165,12 @@ class _PagoDemoState extends State<_PagoDemo> {
                 ),
               ),
               const SizedBox(height: 20),
+              OutlinedButton.icon(
+                onPressed: _sending ? null : _fillTestCard,
+                icon: const Icon(Icons.credit_card_outlined),
+                label: const Text('Usar tarjeta de prueba'),
+              ),
+              const SizedBox(height: 14),
               TextFormField(
                 controller: _name,
                 enabled: !_sending,
@@ -256,8 +273,11 @@ class _PagoDemoState extends State<_PagoDemo> {
                                     'clienteId': _nonce,
                                   },
                                 );
-                            AplicacionController.instance
-                                .refreshPublicPromotions();
+                            if (widget.operation['concepto'] !=
+                                'tutoria_solicitud') {
+                              AplicacionController.instance
+                                  .refreshPublicPromotions();
+                            }
                             if (context.mounted) {
                               Navigator.pop(context, response);
                             }
@@ -274,7 +294,13 @@ class _PagoDemoState extends State<_PagoDemo> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.check_circle_outline),
-                label: Text(_sending ? 'Confirmando…' : 'Simular compra'),
+                label: Text(
+                  _sending
+                      ? 'Confirmando…'
+                      : widget.operation['concepto'] == 'tutoria_solicitud'
+                      ? 'Confirmar pago demo'
+                      : 'Simular compra',
+                ),
               ),
               const SizedBox(height: 12),
               const Text(

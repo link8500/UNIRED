@@ -3,6 +3,14 @@
 enum MarcaTarjetaDemo { visa, mastercard, amex, desconocida }
 
 class TarjetaDemo {
+  static const numeroVisa = '4111111111111111';
+  static const _numerosDePrueba = {
+    numeroVisa,
+    '5555555555554444',
+    '2221000000000009',
+    '378282246310005',
+  };
+
   static String digitos(String value) => value.replaceAll(RegExp(r'[ -]'), '');
   static MarcaTarjetaDemo marca(String number) {
     final value = digitos(number);
@@ -27,30 +35,9 @@ class TarjetaDemo {
   };
   static String? validarNumero(String value) {
     final number = digitos(value);
-    if (!RegExp(r'^\d{13,19}$').hasMatch(number)) {
-      return 'Escribe un número de tarjeta de prueba válido.';
-    }
-    final brand = marca(number);
-    final lengthValid = switch (brand) {
-      MarcaTarjetaDemo.visa => [13, 16, 19].contains(number.length),
-      MarcaTarjetaDemo.mastercard => number.length == 16,
-      MarcaTarjetaDemo.amex => number.length == 15,
-      MarcaTarjetaDemo.desconocida => false,
-    };
-    var sum = 0;
-    var doubleDigit = false;
-    for (var i = number.length - 1; i >= 0; i--) {
-      var digit = int.parse(number[i]);
-      if (doubleDigit) {
-        digit *= 2;
-        if (digit > 9) digit -= 9;
-      }
-      sum += digit;
-      doubleDigit = !doubleDigit;
-    }
-    return lengthValid && sum % 10 == 0
+    return _numerosDePrueba.contains(number)
         ? null
-        : 'Revisa el número de prueba. Admitimos Visa, Mastercard y American Express.';
+        : 'Selecciona «Usar tarjeta de prueba» o escribe un número demo compatible.';
   }
 
   static String? validarVencimiento(String value, {DateTime? ahora}) {

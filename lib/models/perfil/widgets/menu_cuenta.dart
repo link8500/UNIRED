@@ -79,7 +79,6 @@ class MenuCuenta extends StatelessWidget {
         _section(SeccionCuenta.products),
         _section(SeccionCuenta.tutorials),
         _section(SeccionCuenta.favorites),
-        _item(RutasAplicacion.offers, 'Mis ofertas', Icons.handshake_outlined),
         _item(
           RutasAplicacion.tutoringRequests,
           'Solicitudes de tutoría',

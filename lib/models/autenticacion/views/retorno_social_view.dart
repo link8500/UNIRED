@@ -5,7 +5,6 @@ import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart'
 import 'package:unired/models/aplicacion/navegacion/navegador_aplicacion.dart';
 import 'package:unired/models/autenticacion/views/estructura_autenticacion.dart';
 import 'package:unired/models/autenticacion/widgets/widgets_autenticacion.dart';
-import 'package:unired/shared/widgets/formulario_api.dart';
 
 class RetornoSocialView extends StatefulWidget {
   const RetornoSocialView({super.key, this.code = '', this.error = ''});
@@ -18,7 +17,7 @@ class _RetornoSocialViewState extends State<RetornoSocialView> {
   final _store = AplicacionController.instance;
   final _password = TextEditingController();
   final _form = GlobalKey<FormState>();
-  bool _busy = true, _confirm = false, _previous = false, _profile = false;
+  bool _busy = true, _confirm = false, _previous = false;
   String? _error;
   Json _result = {};
   @override
@@ -71,13 +70,6 @@ class _RetornoSocialViewState extends State<RetornoSocialView> {
         _busy = false;
       });
       if (_confirm || _previous) return;
-      final user = _store.currentUser!;
-      if (user.verified &&
-          !user.isStaff &&
-          (user.university.isEmpty || user.major.isEmpty)) {
-        setState(() => _profile = true);
-        return;
-      }
       _finish();
     } catch (error) {
       if (mounted) {
@@ -90,18 +82,15 @@ class _RetornoSocialViewState extends State<RetornoSocialView> {
   }
 
   void _finish() {
-    final admin = _result['volverAdmin'] == true,
-        link = _result['vincular'] == true;
+    final profile = _result['volverAdmin'] == true
+        ? RutasAplicacion.adminProfile
+        : RutasAplicacion.profile;
     final destination = _store.currentUser?.verified != true
         ? RutasAplicacion.verifyEmail
-        : admin
-        ? (link
-              ? '${RutasAplicacion.adminProfile}?tab=security'
-              : RutasAplicacion.dashboard)
-        : link
-        ? '${RutasAplicacion.profile}?tab=security'
-        : RutasAplicacion.profile;
-    NavegadorAplicacion.go(context, destination);
+        : _result['vincular'] == true
+        ? '$profile?tab=security'
+        : profile;
+    Navigator.of(context).pushReplacementNamed(destination);
   }
 
   @override
@@ -111,14 +100,8 @@ class _RetornoSocialViewState extends State<RetornoSocialView> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         TituloAutenticacion(
-          title: _profile
-              ? 'Completa tu perfil'
-              : _confirm
-              ? 'Conecta tu cuenta UniRed'
-              : 'Acceso con tu cuenta',
-          subtitle: _profile
-              ? 'Solo faltan tus datos académicos para continuar.'
-              : _confirm
+          title: _confirm ? 'Conecta tu cuenta UniRed' : 'Acceso con tu cuenta',
+          subtitle: _confirm
               ? 'Ya tienes una cuenta con el correo compartido. Confirma tu contraseña de UniRed para conservar tus datos.'
               : 'Terminaremos la conexión de forma segura.',
         ),
@@ -130,21 +113,6 @@ class _RetornoSocialViewState extends State<RetornoSocialView> {
               SizedBox(height: 16),
               Text('Comprobando tu acceso…'),
             ],
-          )
-        else if (_profile)
-          FormularioApi(
-            title: 'Tu perfil universitario',
-            label: 'Guardar y continuar',
-            initial: _store.currentUser?.profileData ?? {},
-            fields: const [
-              CampoApi('universidad', 'Universidad'),
-              CampoApi('carrera', 'Carrera'),
-              CampoApi('telefono', 'Teléfono (opcional)', required: false),
-            ],
-            submit: (data) async {
-              await _store.saveProfileData({...data, 'telefonoPublico': false});
-              if (mounted) _finish();
-            },
           )
         else if (_confirm)
           Form(
@@ -188,7 +156,7 @@ class _RetornoSocialViewState extends State<RetornoSocialView> {
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
           ),
-        if (!_busy && !_profile)
+        if (!_busy)
           TextButton(
             onPressed: () {
               _store.navegadorSocial.limpiar();

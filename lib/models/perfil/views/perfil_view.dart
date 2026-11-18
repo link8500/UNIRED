@@ -37,6 +37,26 @@ class PerfilView extends StatelessWidget {
         final section = user?.verified == true
             ? SeccionCuenta.fromTab(initialTab)
             : SeccionCuenta.profile;
+        if (asAdmin) {
+          return EstructuraAdministracion(
+            current: RutasAplicacion.adminProfile,
+            child: SingleChildScrollView(
+              child: SeccionPagina(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 28,
+                ),
+                child: user == null
+                    ? const EstadoVacioApi(
+                        message: 'Inicia sesión para ver tu cuenta.',
+                      )
+                    : section == SeccionCuenta.profile
+                    ? _perfilAdministrativo(context, user)
+                    : _panel(context, user, section),
+              ),
+            ),
+          );
+        }
         final content = user == null
             ? const EstadoVacioApi(message: 'Inicia sesión para ver tu cuenta.')
             : LayoutBuilder(
@@ -86,23 +106,90 @@ class PerfilView extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
           child: content,
         );
-        if (asAdmin) {
-          return EstructuraAdministracion(
-            current: RutasAplicacion.adminProfile,
-            child: Column(
-              children: [
-                BarraSuperiorAdmin(title: section.label, subtitle: 'Mi cuenta'),
-                Expanded(child: SingleChildScrollView(child: body)),
-              ],
-            ),
-          );
-        }
         return MarcoPaginaPublica(
           route: section.route(),
           body: body,
           showFooter: false,
         );
       },
+    );
+  }
+
+  Widget _perfilAdministrativo(BuildContext context, UsuarioAplicacion user) {
+    final roles = [
+      if (user.isAdministrator) 'Administración',
+      if (user.canModerate && !user.isAdministrator) 'Moderación',
+      if (user.canReview && !user.isAdministrator) 'Revisión de tutores',
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Mi perfil administrativo',
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+        const SizedBox(height: 18),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: ColoresAplicacion.navy,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Row(
+              children: [
+                AvatarAdmin(name: user.name, fileId: user.avatarId, radius: 30),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        user.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        user.email,
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      if (roles.isNotEmpty) ...[
+                        const SizedBox(height: 9),
+                        Text(
+                          roles.join(' · '),
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        SuperficieAdmin(
+          child: Column(
+            children: [
+              for (final section in [
+                SeccionCuenta.edit,
+                SeccionCuenta.security,
+                SeccionCuenta.preferences,
+              ])
+                ListTile(
+                  leading: Icon(section.icon, color: ColoresAplicacion.blue),
+                  title: Text(section.label),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _open(context, section),
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -144,15 +231,6 @@ class PerfilView extends StatelessWidget {
             onTap: () => _open(context, item),
           ),
         const Divider(),
-        ListTile(
-          dense: true,
-          leading: const Icon(Icons.handshake_outlined, size: 19),
-          title: const Text('Mis ofertas'),
-          onTap: () => NavegadorAplicacion.go(
-            context,
-            asAdmin ? RutasAplicacion.adminOffers : RutasAplicacion.offers,
-          ),
-        ),
         ListTile(
           dense: true,
           leading: const Icon(Icons.school_outlined, size: 19),

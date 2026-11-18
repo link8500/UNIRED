@@ -54,6 +54,8 @@ class AplicacionController extends ChangeNotifier {
   bool loading = false;
   bool initialized = false;
   String? lastError;
+  String? accountDataError;
+  bool loadingAccountData = false;
   int sessionEpoch = 0;
   int notificationsRevision = 0;
   int promotionsRevision = 0;
@@ -230,8 +232,16 @@ class AplicacionController extends ChangeNotifier {
             categories = jsonRows(catalog[0]);
             areas = jsonRows(catalog[1]);
             final popular = await Future.wait([
-              api.page('/listings', query: {'sort': 'popular'}),
-              api.page('/courses', query: {'sort': 'popular'}),
+              api.page(
+                '/listings',
+                query: {'sort': 'popular'},
+                authenticated: false,
+              ),
+              api.page(
+                '/courses',
+                query: {'sort': 'popular'},
+                authenticated: false,
+              ),
             ]);
             _popularProducts = popular[0].items
                 .take(4)
@@ -246,7 +256,6 @@ class AplicacionController extends ChangeNotifier {
               searchCourses(query: _coursesQuery),
             ]);
             initialized = true;
-            if (currentUser != null) await refreshAccountData();
           } catch (error) {
             lastError = error.toString();
           } finally {
@@ -265,6 +274,7 @@ class AplicacionController extends ChangeNotifier {
       '/listings',
       page: more ? (marketPage?.page ?? 0) + 1 : 1,
       query: _marketQuery,
+      authenticated: false,
     );
     if (request != _marketRequest) return;
     marketPage = page;
@@ -282,6 +292,7 @@ class AplicacionController extends ChangeNotifier {
       '/courses',
       page: more ? (coursesPage?.page ?? 0) + 1 : 1,
       query: _coursesQuery,
+      authenticated: false,
     );
     if (request != _coursesRequest) return;
     coursesPage = page;
@@ -296,6 +307,12 @@ class AplicacionController extends ChangeNotifier {
     required String email,
     required String password,
     String? name,
+  }) => _signInWithPassword(email, password);
+
+  Future<UsuarioAplicacion> _signInWithPassword(
+    String email,
+    String password, {
+    bool admin = false,
   }) async {
     final result = await api.object(
       '/auth/login',
@@ -303,28 +320,14 @@ class AplicacionController extends ChangeNotifier {
       authenticated: false,
       data: {'email': email.trim(), 'password': password},
     );
-    _clearAccount(clearTokens: true);
-    api.acceptTokens(result);
-    try {
-      await refreshMe();
-    } catch (_) {
-      _clearAccount();
-      rethrow;
-    }
-    await refreshAccountData();
-    _startNotices();
-    return currentUser!;
+    return _openSession(result, admin: admin);
   }
 
   Future<bool> signInAdmin({
     required String username,
     required String password,
   }) async {
-    final account = await signIn(email: username, password: password);
-    if (!account.isStaff) {
-      await logout();
-      throw const ErrorApi('Esta cuenta no tiene acceso al panel.', 403);
-    }
+    await _signInWithPassword(username, password, admin: true);
     return true;
   }
 
@@ -397,29 +400,43 @@ class AplicacionController extends ChangeNotifier {
         result['requiereAccesoPrevio'] == true) {
       return result;
     }
-    _clearAccount(clearTokens: true);
-    api.acceptTokens(result);
-    try {
-      await refreshMe();
-    } catch (_) {
-      _clearAccount();
-      rethrow;
-    }
     navegadorSocial.limpiar();
-    if (pending['admin'] == true && currentUser?.isStaff != true) {
-      await logout();
-      throw const ErrorApi(
-        'Esta cuenta no tiene acceso al panel de administración.',
-        403,
-      );
-    }
-    await refreshAccountData();
-    _startNotices();
+    await _openSession(result, admin: pending['admin'] == true);
     return {
       ...result,
       'volverAdmin': pending['admin'] == true,
       'vincular': pending['vincular'] == true,
     };
+  }
+
+  Future<UsuarioAplicacion> _openSession(
+    Json tokens, {
+    required bool admin,
+  }) async {
+    _clearAccount();
+    final epoch = sessionEpoch;
+    api.acceptTokens(tokens);
+    try {
+      final row = await api.object('/me');
+      if (epoch != sessionEpoch) {
+        throw const ErrorApi('Vuelve a iniciar sesión para continuar.', 401);
+      }
+      final user = _account(row);
+      if (admin && !user.isStaff) {
+        await logout();
+        throw const ErrorApi('Esta cuenta no tiene acceso al panel.', 403);
+      }
+      currentUser = user;
+      notifyListeners();
+      if (user.verified) {
+        _startNotices();
+        unawaited(refreshSignedInData());
+      }
+      return user;
+    } catch (_) {
+      if (epoch == sessionEpoch) _clearAccount();
+      rethrow;
+    }
   }
 
   Future<Json> register({
@@ -450,28 +467,57 @@ class AplicacionController extends ChangeNotifier {
   Future<void> refreshAccountData() async {
     if (currentUser?.verified != true) return;
     final epoch = sessionEpoch;
-    final values = await Future.wait([
-      _all('/me/listings'),
-      _all('/me/courses'),
-      _all('/me/favorites'),
-      _all('/me/enrollments'),
-      api.request('/me/tutor-grants'),
-    ]);
-    if (epoch != sessionEpoch) return;
-    _ownProducts = jsonRows(values[0]).map(productFromJson).toList();
-    _ownTutorials = jsonRows(values[1]).map(tutorialFromJson).toList();
-    _favorites = jsonRows(values[2]).map(productFromJson).toList();
-    enrollments = jsonRows(values[3]);
-    tutorGrants = jsonRows(values[4]);
+    Future<void> load(
+      Future<List<Json>> rows,
+      void Function(List<Json>) update,
+    ) async {
+      final result = await rows;
+      if (!_disposed && epoch == sessionEpoch) {
+        update(result);
+        notifyListeners();
+      }
+    }
+
     await Future.wait([
+      load(
+        _all('/me/listings'),
+        (rows) => _ownProducts = rows.map(productFromJson).toList(),
+      ),
+      load(
+        _all('/me/courses'),
+        (rows) => _ownTutorials = rows.map(tutorialFromJson).toList(),
+      ),
+      load(
+        _all('/me/favorites'),
+        (rows) => _favorites = rows.map(productFromJson).toList(),
+      ),
+      load(_all('/me/enrollments'), (rows) => enrollments = rows),
+      load(
+        api.request('/me/tutor-grants').then(jsonRows),
+        (rows) => tutorGrants = rows,
+      ),
       refreshNotifications(),
-      if (isAdministrator) ...[loadAdminUsers(), loadDashboard()],
-      if (canModerate) ...[
-        loadAdminPublications(false),
-        loadAdminPublications(true),
-      ],
     ]);
+  }
+
+  Future<void> refreshSignedInData() async {
+    if (loadingAccountData || currentUser?.verified != true) return;
+    final epoch = sessionEpoch;
+    loadingAccountData = true;
+    accountDataError = null;
     notifyListeners();
+    try {
+      await refreshAccountData();
+    } catch (_) {
+      if (!_disposed && epoch == sessionEpoch) {
+        accountDataError = 'Faltan algunos datos de tu cuenta por cargar.';
+      }
+    } finally {
+      if (!_disposed && epoch == sessionEpoch) {
+        loadingAccountData = false;
+        notifyListeners();
+      }
+    }
   }
 
   Future<List<Json>> _all(String path, {bool foreground = true}) async {
@@ -513,11 +559,16 @@ class AplicacionController extends ChangeNotifier {
     _noticeCursor = '0';
     if (clearTokens) api.clearSession();
     currentUser = null;
+    accountDataError = null;
+    loadingAccountData = false;
     _ownProducts = [];
     _ownTutorials = [];
     _adminProducts = [];
     _adminTutorials = [];
     _users = [];
+    adminUsersPage = null;
+    adminMarketPage = null;
+    adminCoursesPage = null;
     _favorites = [];
     _notices = [];
     _unread = 0;

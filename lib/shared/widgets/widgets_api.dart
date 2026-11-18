@@ -128,11 +128,19 @@ class AvisoEstadoApi extends StatelessWidget {
     animation: AplicacionController.instance,
     builder: (_, _) {
       final store = AplicacionController.instance;
-      if (store.lastError == null) return const SizedBox.shrink();
-      return AvisoErrorApi(
-        message: store.lastError!,
-        retry: store.loading ? null : () => store.initialize(force: true),
-      );
+      if (store.lastError case final message?) {
+        return AvisoErrorApi(
+          message: message,
+          retry: store.loading ? null : () => store.initialize(force: true),
+        );
+      }
+      if (store.accountDataError case final message?) {
+        return AvisoErrorApi(
+          message: message,
+          retry: store.refreshSignedInData,
+        );
+      }
+      return const SizedBox.shrink();
     },
   );
 }

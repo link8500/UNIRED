@@ -27,6 +27,21 @@ class ResumenCuenta extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       TarjetaIdentidadPerfil(user: user, onEdit: user.verified ? onEdit : null),
+      if (user.verified &&
+          !user.isStaff &&
+          (user.university.trim().isEmpty || user.major.trim().isEmpty)) ...[
+        const SizedBox(height: 16),
+        TarjetaSuave(
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.school_outlined),
+            title: const Text('Completa tu perfil'),
+            subtitle: const Text('Agrega tu universidad y carrera.'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: onEdit,
+          ),
+        ),
+      ],
       if (user.verified) ...[
         const SizedBox(height: 20),
         const EncabezadoSeccionAdmin(

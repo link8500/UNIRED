@@ -1,7 +1,8 @@
 {
     "name": "UniRed",
     "short_name": "UniRed",
-    "start_url": ".",
+    "id": ".",
+    "start_url": "./#/home",
     "display": "standalone",
     "background_color": "#FFFFFF",
     "theme_color": "#0079D3",

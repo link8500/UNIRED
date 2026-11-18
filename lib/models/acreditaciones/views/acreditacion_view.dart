@@ -11,30 +11,6 @@ import 'package:unired/shared/widgets/widgets_api.dart';
 import 'package:unired/shared/widgets/estructura_administracion.dart';
 import 'package:unired/shared/widgets/marco_pagina.dart';
 
-const _applicationFields = [
-  CampoApi(
-    'formacionAcademica',
-    'Formación académica y certificaciones',
-    clearable: true,
-    lines: 3,
-    required: false,
-  ),
-  CampoApi(
-    'experienciaDocente',
-    'Experiencia enseñando o acompañando estudiantes',
-    clearable: true,
-    lines: 3,
-    required: false,
-  ),
-  CampoApi(
-    'especialidades',
-    'Especialidades (separadas por comas)',
-    clearable: true,
-    kind: TipoCampoApi.list,
-    required: false,
-  ),
-];
-
 class AcreditacionView extends StatefulWidget {
   const AcreditacionView({
     super.key,
@@ -51,8 +27,10 @@ class _AcreditacionViewState extends State<AcreditacionView> {
   late Future<PaginaApi> _list = _load();
   Future<Json>? _details;
   String? _id;
-  String _group = '';
-  final _type = TextEditingController(text: 'certificado');
+  bool _uploading = false;
+  late Future<List<Json>> _areas = _loadAreas();
+  Future<List<Json>> _loadAreas() =>
+      _store.api.request('/areas', authenticated: false).then(jsonRows);
   String get _root =>
       widget.review ? '/admin/tutor-applications' : '/me/tutor-applications';
   Future<PaginaApi> _load({int page = 1}) => _store.api.page(_root, page: page);
@@ -62,12 +40,6 @@ class _AcreditacionViewState extends State<AcreditacionView> {
       _list = _load();
       if (_id != null) _details = _store.api.object('$_root/${_id!}');
     });
-  }
-
-  @override
-  void dispose() {
-    _type.dispose();
-    super.dispose();
   }
 
   @override
@@ -84,101 +56,142 @@ class _AcreditacionViewState extends State<AcreditacionView> {
             style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 12),
-          const Text(
-            'Las evidencias son privadas. Cada envío conserva sus versiones para revisión.',
+          Text(
+            widget.review
+                ? 'Revisa los documentos de cada solicitud.'
+                : 'Elige el área, adjunta tus documentos y envíalos a revisión.',
           ),
           const SizedBox(height: 20),
           if (!widget.review)
-            FormularioApi(
-              title: 'Solicitar autorización en un área',
-              fields: [
-                CampoApi(
-                  'areaId',
-                  'Área',
-                  kind: TipoCampoApi.integerChoice,
-                  choices: {
-                    for (final a in _store.areas)
-                      textValue(a['id']): textValue(a['nombre']),
+            FutureBuilder<List<Json>>(
+              future: _areas,
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return AvisoErrorApi(
+                    message: 'No se pudieron cargar las áreas.',
+                    retry: () => setState(() {
+                      _areas = _loadAreas();
+                    }),
+                  );
+                }
+                final areas = snapshot.data;
+                if (areas == null) return const LinearProgressIndicator();
+                if (_id != null) return const SizedBox.shrink();
+                if (areas.isEmpty) {
+                  return const EstadoVacioApi(
+                    message: 'No hay áreas abiertas para acreditación.',
+                  );
+                }
+                return FormularioApi(
+                  title: 'Área que quieres impartir',
+                  fields: [
+                    CampoApi(
+                      'areaId',
+                      'Área',
+                      kind: TipoCampoApi.integerChoice,
+                      choices: {
+                        for (final area in areas)
+                          textValue(area['id']): textValue(area['nombre']),
+                      },
+                    ),
+                  ],
+                  label: 'Continuar a documentos',
+                  submit: (data) async {
+                    final result = await _store.api.object(
+                      _root,
+                      method: 'POST',
+                      data: data,
+                    );
+                    if (!mounted) return;
+                    _id = textValue(result['id']);
+                    _reload();
                   },
-                ),
-                ..._applicationFields,
-              ],
-              label: 'Crear expediente',
-              submit: (data) async {
-                final result = await _store.api.object(
-                  _root,
-                  method: 'POST',
-                  data: data,
                 );
-                _id = textValue(result['id']);
-                _reload();
               },
             ),
-          FutureBuilder<PaginaApi>(
-            future: _list,
-            builder: (_, snapshot) {
-              if (snapshot.hasError) {
-                return AvisoErrorApi(message: snapshot.error.toString());
-              }
-              if (!snapshot.hasData) {
-                return const EstadoVacioApi(message: '', loading: true);
-              }
-              final page = snapshot.data!;
-              return Column(
-                children: [
-                  for (final request in page.items)
-                    Card(
-                      child: ListTile(
-                        title: Text(
-                          'Expediente ${textValue(request['id'])} · área ${textValue(request['areaId'])}',
-                        ),
-                        subtitle: Text(textValue(request['estado'])),
-                        trailing: widget.review
-                            ? BotonAccionApi(
-                                label: request['estado'] == 'enviada'
-                                    ? 'Asumir revisión'
-                                    : 'Consultar',
-                                action: () async {
-                                  if (request['estado'] == 'enviada') {
-                                    await _store.api.object(
-                                      '$_root/${textValue(request['id'])}/claim',
-                                      method: 'POST',
-                                      data: {
-                                        'versionLock': request['versionLock'],
-                                      },
-                                    );
-                                  }
-                                  setState(() {
+          if (widget.review || _id == null)
+            FutureBuilder<PaginaApi>(
+              future: _list,
+              builder: (_, snapshot) {
+                if (snapshot.hasError) {
+                  return AvisoErrorApi(
+                    message: snapshot.error.toString(),
+                    retry: _reload,
+                  );
+                }
+                if (!snapshot.hasData) {
+                  return const EstadoVacioApi(message: '', loading: true);
+                }
+                final page = snapshot.data!;
+                return Column(
+                  children: [
+                    for (final request in page.items)
+                      Card(
+                        child: ListTile(
+                          title: Text(
+                            'Expediente ${textValue(request['id'])} · área ${textValue(request['areaId'])}',
+                          ),
+                          subtitle: Text(textValue(request['estado'])),
+                          trailing: widget.review
+                              ? BotonAccionApi(
+                                  label: request['estado'] == 'enviada'
+                                      ? 'Asumir revisión'
+                                      : 'Consultar',
+                                  action: () async {
+                                    if (request['estado'] == 'enviada') {
+                                      await _store.api.object(
+                                        '$_root/${textValue(request['id'])}/claim',
+                                        method: 'POST',
+                                        data: {
+                                          'versionLock': request['versionLock'],
+                                        },
+                                      );
+                                    }
+                                    setState(() {
+                                      _id = textValue(request['id']);
+                                      _details = _store.api.object(
+                                        '$_root/${_id!}',
+                                      );
+                                    });
+                                  },
+                                )
+                              : TextButton(
+                                  onPressed: () => setState(() {
                                     _id = textValue(request['id']);
                                     _details = _store.api.object(
                                       '$_root/${_id!}',
                                     );
-                                  });
-                                },
-                              )
-                            : TextButton(
-                                onPressed: () => setState(() {
-                                  _id = textValue(request['id']);
-                                  _details = _store.api.object(
-                                    '$_root/${_id!}',
-                                  );
-                                }),
-                                child: const Text('Abrir'),
-                              ),
+                                  }),
+                                  child: const Text('Abrir'),
+                                ),
+                        ),
                       ),
+                    PaginacionApi(
+                      page: page,
+                      load: (p) async {
+                        setState(() {
+                          _list = _load(page: p);
+                        });
+                      },
                     ),
-                  PaginacionApi(
-                    page: page,
-                    load: (p) async {
-                      setState(() {
-                        _list = _load(page: p);
-                      });
-                    },
-                  ),
-                ],
-              );
-            },
-          ),
+                  ],
+                );
+              },
+            ),
+          if (_details != null && !widget.review)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: _uploading
+                    ? null
+                    : () => setState(() {
+                        _id = null;
+                        _details = null;
+                      }),
+                icon: const Icon(Icons.arrow_back),
+                label: const Text('Preparar otra solicitud'),
+              ),
+            ),
           if (_details != null)
             FutureBuilder<Json>(
               future: _details,
@@ -189,7 +202,21 @@ class _AcreditacionViewState extends State<AcreditacionView> {
                 if (!snapshot.hasData) {
                   return const EstadoVacioApi(message: '', loading: true);
                 }
-                return _detail(snapshot.data!);
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const LinearProgressIndicator();
+                }
+                return widget.review
+                    ? _detail(snapshot.data!, _store.areas)
+                    : FutureBuilder<List<Json>>(
+                        future: _areas,
+                        builder: (context, areas) {
+                          if (areas.hasError) return const SizedBox.shrink();
+                          if (!areas.hasData) {
+                            return const LinearProgressIndicator();
+                          }
+                          return _detail(snapshot.data!, areas.data!);
+                        },
+                      );
               },
             ),
         ],
@@ -205,9 +232,31 @@ class _AcreditacionViewState extends State<AcreditacionView> {
         : MarcoPaginaPublica(route: RutasAplicacion.profile, body: content);
   }
 
-  Widget _detail(Json row) {
+  Future<void> _attach(Json row, String type, Json? previous) async {
+    if (_uploading) return;
+    setState(() => _uploading = true);
+    try {
+      final file = await _store.pickAndUpload('evidencia_tutor');
+      if (file == null || !mounted) return;
+      await _store.api.object(
+        '$_root/${textValue(row['id'])}/documents',
+        method: 'POST',
+        data: {
+          'archivoId': file['id'],
+          'tipo': type,
+          'versionLock': row['versionLock'],
+          if (previous != null) 'grupoDocumento': previous['grupoDocumento'],
+        },
+      );
+      _reload();
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  Widget _detail(Json row, List<Json> areas) {
     final id = textValue(row['id']);
-    final area = _store.areas
+    final area = areas
         .where((a) => textValue(a['id']) == textValue(row['areaId']))
         .firstOrNull;
     final requiredTypes = area?['requisitosDocumentales'] is List
@@ -217,37 +266,31 @@ class _AcreditacionViewState extends State<AcreditacionView> {
         : <String>[];
     final documents = jsonRows(row['documentos']);
     final editable = ['borrador', 'correcciones'].contains(row['estado']);
-    final groups = {
-      for (final d in documents) textValue(d['grupoDocumento']): d,
-    };
+    final latest = <String, Json>{};
+    for (final document in documents) {
+      final group = textValue(document['grupoDocumento']);
+      final previous = latest[group];
+      if (previous == null ||
+          intValue(previous['version']) < intValue(document['version'])) {
+        latest[group] = document;
+      }
+    }
+    final types = requiredTypes.isEmpty ? const ['certificado'] : requiredTypes;
+    final complete =
+        latest.isNotEmpty &&
+        requiredTypes.every(
+          (type) => latest.values.any((doc) => doc['tipo'] == type),
+        );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 20),
-        if (!widget.review && editable)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 20),
-            child: FormularioApi(
-              key: ValueKey('application-profile-${row['versionLock']}'),
-              title: 'Formación y experiencia',
-              initial: row,
-              fields: _applicationFields,
-              submit: (data) async {
-                await _store.api.object(
-                  '$_root/$id/profile',
-                  method: 'PATCH',
-                  data: {...data, 'versionLock': row['versionLock']},
-                );
-                _reload();
-              },
-            ),
-          ),
         TarjetaSuave(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Documentos · ${textValue(row['estado'])}',
+                'Documentos${area == null ? '' : " · ${textValue(area['nombre'])}"}',
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
@@ -260,7 +303,7 @@ class _AcreditacionViewState extends State<AcreditacionView> {
                     'Requisitos del área: ${requiredTypes.join(', ')}.',
                   ),
                 ),
-              for (final d in documents)
+              for (final d in widget.review ? documents : latest.values)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(
@@ -288,57 +331,40 @@ class _AcreditacionViewState extends State<AcreditacionView> {
         ),
         if (!widget.review && editable) ...[
           const SizedBox(height: 16),
-          TextField(
-            controller: _type,
-            decoration: const InputDecoration(
-              labelText: 'Tipo de documento (según requisitos del área)',
-            ),
-          ),
-          DropdownButtonFormField<String>(
-            initialValue: groups.containsKey(_group) ? _group : '',
-            items: [
-              const DropdownMenuItem(value: '', child: Text('Nuevo documento')),
-              for (final group in groups.entries)
-                DropdownMenuItem(
-                  value: group.key,
-                  child: Text(
-                    'Nueva versión: ${textValue(group.value['tipo'])}',
+          for (final type in types)
+            Builder(
+              builder: (context) {
+                final previous = latest.values
+                    .where((doc) => doc['tipo'] == type)
+                    .firstOrNull;
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    previous == null
+                        ? Icons.description_outlined
+                        : Icons.check_circle_outline,
                   ),
-                ),
-            ],
-            onChanged: (value) => _group = value ?? '',
-          ),
+                  title: Text(type.replaceAll('_', ' ')),
+                  trailing: BotonAccionApi(
+                    label: previous == null ? 'Adjuntar' : 'Reemplazar',
+                    icon: Icons.upload_file,
+                    enabled: !_uploading,
+                    action: () => _attach(row, type, previous),
+                  ),
+                );
+              },
+            ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 12,
             runSpacing: 12,
             children: [
               BotonAccionApi(
-                label: 'Subir evidencia',
-                icon: Icons.upload_file,
-                action: () async {
-                  final type = _type.text.trim();
-                  final group = _group;
-                  final file = await _store.pickAndUpload('evidencia_tutor');
-                  if (file == null) return;
-                  await _store.api.object(
-                    '$_root/$id/documents',
-                    method: 'POST',
-                    data: {
-                      'archivoId': file['id'],
-                      'tipo': type,
-                      'versionLock': row['versionLock'],
-                      if (group.isNotEmpty) 'grupoDocumento': group,
-                    },
-                  );
-                  _reload();
-                },
-              ),
-              BotonAccionApi(
-                label: 'Enviar a revisión',
+                label: 'Enviar documentos a revisión',
+                enabled: complete && !_uploading,
                 action: () async {
                   await _store.api.object(
-                    '$_root/${_id!}/submit',
+                    '$_root/$id/submit',
                     method: 'POST',
                     data: {'versionLock': row['versionLock']},
                   );
@@ -346,10 +372,11 @@ class _AcreditacionViewState extends State<AcreditacionView> {
                 },
               ),
               BotonAccionApi(
+                enabled: !_uploading,
                 label: 'Retirar expediente',
                 action: () async {
                   await _store.api.object(
-                    '$_root/${_id!}/withdraw',
+                    '$_root/$id/withdraw',
                     method: 'POST',
                     data: {'versionLock': row['versionLock']},
                   );

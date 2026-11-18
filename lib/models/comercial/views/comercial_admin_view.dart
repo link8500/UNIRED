@@ -135,8 +135,31 @@ class _ComercialAdminViewState extends State<ComercialAdminView> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Text(
-                        'Todos los cobros y saldos siguen siendo de demostración. Cambiar estas tarifas no activa pagos reales.',
+                      Text(
+                        data['tutoriasGratuitas'] == true
+                            ? 'Modo gratuito activo. Las solicitudes y las inscripciones se ofrecen sin costo.'
+                            : 'El estudiante puede confirmar un pago simulado cuando el tutor acepte. Los cursos grabados con tarifa se mantienen en pausa.',
+                      ),
+                      const SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: BotonAccionApi(
+                          label: data['tutoriasGratuitas'] == true
+                              ? 'Usar pagos de demostración'
+                              : 'Activar modo gratuito',
+                          icon: Icons.school_outlined,
+                          action: () async {
+                            await _api.object(
+                              '/admin/commerce/config',
+                              method: 'PATCH',
+                              data: {
+                                'tutoriasGratuitas':
+                                    data['tutoriasGratuitas'] != true,
+                              },
+                            );
+                            if (mounted) _refresh();
+                          },
+                        ),
                       ),
                       const SizedBox(height: 18),
                       FormularioApi(

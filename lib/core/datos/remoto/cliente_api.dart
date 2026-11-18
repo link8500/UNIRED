@@ -290,11 +290,13 @@ class ClienteApi implements RepositorioApi {
     String path, {
     int page = 1,
     Json? query,
+    bool authenticated = true,
     bool foreground = true,
   }) async {
     final result = await request(
       path,
       query: {'page': page, 'limit': 50, ...?query},
+      authenticated: authenticated,
       foreground: foreground,
     );
     if (result is List) {

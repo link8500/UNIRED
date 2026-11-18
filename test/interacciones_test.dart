@@ -19,6 +19,8 @@ void main() {
   late AplicacionController store;
   late TestAdapter adapter;
   var state = 'pendiente';
+  var demoPayment = false;
+  var paymentConfirmed = false;
   Json page(List<Json> rows) => {
     'items': rows,
     'total': rows.length,
@@ -40,25 +42,34 @@ void main() {
   });
   setUp(() {
     state = 'pendiente';
+    demoPayment = false;
+    paymentConfirmed = false;
     adapter = TestAdapter((r) async {
       if (r.path == '/areas') {
         return TestReply([
           {'id': 1, 'nombre': 'Programación'},
         ]);
       }
-      if (r.path == '/tutorial-quote') {
-        return TestReply({'total': '180.00', 'comision': '18.00'}, status: 201);
+      if (r.path == '/commerce/config') {
+        return TestReply({'tutoriasGratuitas': true});
       }
       if (r.path == '/me/tutoring-requests' && r.method == 'POST') {
         return TestReply({'id': '9', 'estado': 'publicada'}, status: 201);
+      }
+      if (r.path == '/demo/checkout' && r.method == 'POST') {
+        paymentConfirmed = true;
+        return TestReply({
+          'pago': {'id': '41', 'importe': '180.00'},
+          'simulado': true,
+        }, status: 201);
       }
       if (r.path == '/me/tutoring-requests') {
         return TestReply(
           page([
             {
               'id': '9',
-              'alumnoId': 2,
-              'tutorId': 1,
+              'alumnoId': demoPayment ? 1 : 2,
+              'tutorId': demoPayment ? 2 : 1,
               'alumnoNombre': 'Sofía Martínez',
               'tema': 'Entender los componentes de Angular',
               'materia': 'Desarrollo web',
@@ -66,8 +77,11 @@ void main() {
                   'Necesito organizar los componentes y comunicar sus datos.',
               'duracionMinutos': 60,
               'modalidad': 'online',
-              'precio': '180.00',
-              'comision': '18.00',
+              'precio': demoPayment ? '180.00' : '0.00',
+              'comision': demoPayment ? '18.00' : '0.00',
+              'requierePagoDemo': demoPayment,
+              'pagoDemoConfirmado': paymentConfirmed,
+              if (paymentConfirmed) 'pagoDemoId': '41',
               'estado': 'aceptada',
               'conversacionId': '8',
               'areaId': 1,
@@ -153,6 +167,43 @@ void main() {
     });
   }
 
+  testWidgets(
+    'la tarjeta de prueba confirma la tutoría y deja un comprobante',
+    (t) async {
+      demoPayment = true;
+      await open(t, const InteraccionesView(tutorials: true), 390);
+      expect(find.text('Pago demo pendiente'), findsOneWidget);
+      expect(find.text('Finalizar'), findsNothing);
+      final pay = find.text('Pagar con tarjeta de prueba');
+      await t.ensureVisible(pay);
+      await t.tap(pay);
+      await t.pumpAndSettle();
+      final testCard = find.text('Usar tarjeta de prueba');
+      await t.ensureVisible(testCard);
+      await t.tap(testCard);
+      await t.pumpAndSettle();
+      final confirm = find.text('Confirmar pago demo');
+      await t.ensureVisible(confirm);
+      await t.tap(confirm);
+      await t.pumpAndSettle();
+      expect(find.text('Comprobante de demostración'), findsOneWidget);
+      expect(find.text('Referencia: DEMO-41'), findsOneWidget);
+      final payload = jsonObject(
+        adapter.requests.singleWhere((r) => r.path == '/demo/checkout').data,
+      );
+      expect(
+        payload.keys,
+        unorderedEquals(['concepto', 'recursoId', 'importe', 'clienteId']),
+      );
+      expect(payload['concepto'], 'tutoria_solicitud');
+      expect(payload['recursoId'], '9');
+      await t.tap(find.text('Cerrar'));
+      await t.pumpAndSettle();
+      expect(find.text('Ver comprobante'), findsOneWidget);
+      expect(find.text('Finalizar'), findsOneWidget);
+    },
+  );
+
   for (final width in [390.0, 1440.0]) {
     testWidgets(
       'oferta a $width: aceptación abre el chat y el cierre permite valorar',
@@ -178,70 +229,48 @@ void main() {
         expect(t.takeException(), isNull);
       },
     );
-    testWidgets(
-      'solicitud a $width: conserva datos al editar y solo publica tras confirmar',
-      (t) async {
-        var completed = 0;
-        final key = await open(
-          t,
-          Scaffold(
-            body: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: SolicitarTutoria(finished: () => completed++),
-            ),
+    testWidgets('solicitud gratuita a $width: se publica en un solo paso', (
+      t,
+    ) async {
+      var completed = 0;
+      final key = await open(
+        t,
+        Scaffold(
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: SolicitarTutoria(finished: () => completed++),
           ),
-          width,
-        );
-        await t.tap(find.text('Área de enseñanza'));
-        await t.pumpAndSettle();
-        await t.tap(find.text('Programación').last);
-        await t.pumpAndSettle();
-        final fields = find.byType(TextFormField);
-        await t.enterText(fields.at(0), 'Desarrollo web');
-        await t.enterText(fields.at(1), 'Entender los componentes de Angular');
-        await t.enterText(
-          fields.at(2),
-          'Necesito organizar los componentes y comunicar sus datos.',
-        );
-        await t.ensureVisible(find.text('Revisar cotización'));
-        await t.tap(find.text('Revisar cotización'));
-        await t.pumpAndSettle();
-        expect(find.text('Cotización: C\$ 180.00'), findsOneWidget);
-        expect(
-          adapter.requests.where(
-            (r) => r.path == '/me/tutoring-requests' && r.method == 'POST',
-          ),
-          isEmpty,
-        );
-        await preview(t, key, 'solicitud-confirmacion-$width');
-        await t.ensureVisible(find.text('Editar solicitud'));
-        await t.tap(find.text('Editar solicitud'));
-        await t.pumpAndSettle();
-        expect(
-          t
-              .widget<TextFormField>(find.byType(TextFormField).at(1))
-              .controller!
-              .text,
-          'Entender los componentes de Angular',
-        );
-        await t.ensureVisible(find.text('Revisar cotización'));
-        await t.tap(find.text('Revisar cotización'));
-        await t.pumpAndSettle();
-        await t.ensureVisible(find.text('Publicar solicitud'));
-        await t.tap(find.text('Publicar solicitud'));
-        await t.pumpAndSettle();
-        expect(completed, 1);
-        expect(
-          adapter.requests
-              .singleWhere(
-                (r) => r.path == '/me/tutoring-requests' && r.method == 'POST',
-              )
-              .data,
-          containsPair('precioConfirmado', '180.00'),
-        );
-        expect(t.takeException(), isNull);
-      },
-    );
+        ),
+        width,
+      );
+      await t.tap(find.text('Área de enseñanza'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('Programación').last);
+      await t.pumpAndSettle();
+      final fields = find.byType(TextFormField);
+      await t.enterText(fields.at(0), 'Desarrollo web');
+      await t.enterText(fields.at(1), 'Entender los componentes de Angular');
+      await t.enterText(
+        fields.at(2),
+        'Necesito organizar los componentes y comunicar sus datos.',
+      );
+      expect(find.text('Solicitud gratuita'), findsOneWidget);
+      expect(adapter.requests.where((r) => r.method == 'POST'), isEmpty);
+      await preview(t, key, 'solicitud-gratuita-$width');
+      await t.ensureVisible(find.text('Enviar solicitud'));
+      await t.tap(find.text('Enviar solicitud'));
+      await t.pumpAndSettle();
+      expect(completed, 1);
+      expect(
+        adapter.requests
+            .singleWhere(
+              (r) => r.path == '/me/tutoring-requests' && r.method == 'POST',
+            )
+            .data,
+        containsPair('precioConfirmado', '0.00'),
+      );
+      expect(t.takeException(), isNull);
+    });
     testWidgets(
       'tutoría a $width: compartir material explica cómo preparar un curso',
       (t) async {

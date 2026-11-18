@@ -161,6 +161,17 @@ body {
   background: #0677ce;
 }
 
+.unired-start .unired-start-open {
+  display: inline-block;
+  margin-top: 20px;
+  border-radius: 10px;
+  padding: 12px 22px;
+  background: #0768b4;
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+}
+
 .unired-start-retry {
   margin-top: 16px;
   padding: 10px 18px;
@@ -197,12 +208,6 @@ body {
 .unired-start-features p {
   font-size: 14px;
   margin: 0;
-}
-
-.unired-start-number {
-  color: #b82c46;
-  font-size: 12px;
-  font-weight: 700;
 }
 
 .unired-start-footer {

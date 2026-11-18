@@ -8,6 +8,8 @@ import 'package:unired/core/datos/remoto/cliente_api.dart';
 import 'package:unired/core/dominio/contratos/navegador_social.dart';
 import 'package:unired/core/dominio/datos_api.dart';
 import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
+import 'package:unired/models/aplicacion/navegacion/navegador_aplicacion.dart';
+import 'package:unired/models/perfil/views/perfil_view.dart';
 import 'package:unired/models/autenticacion/models/usuario_aplicacion.dart';
 import 'package:unired/models/autenticacion/views/retorno_social_view.dart';
 import 'package:unired/models/autenticacion/widgets/botones_acceso_social.dart';
@@ -110,6 +112,7 @@ void main() {
     await t.pumpWidget(
       MaterialApp(
         theme: TemaAplicacion.light,
+        onGenerateRoute: NavegadorAplicacion.onGenerateRoute,
         home: child is RetornoSocialView
             ? child
             : Scaffold(
@@ -284,17 +287,25 @@ void main() {
     expect(t.takeException(), isNull);
   });
   testWidgets(
-    'una cuenta nueva completa universidad y carrera antes de continuar',
+    'una cuenta nueva abre su perfil y puede completar universidad y carrera',
     (t) async {
       account['perfil'] = {};
       await t.runAsync(() => store.iniciarAccesoSocial('google'));
       await screen(t, const RetornoSocialView(code: 'codigo'), 390);
+      expect(find.byType(PerfilView), findsOneWidget);
       expect(find.text('Completa tu perfil'), findsOneWidget);
-      expect(find.text('Universidad'), findsOneWidget);
-      expect(find.text('Carrera'), findsOneWidget);
       expect(t.takeException(), isNull);
       // Cancela la consulta periódica de notificaciones antes del cierre del test.
       await t.runAsync(store.logout);
     },
   );
+  testWidgets('el retorno del equipo abre el perfil administrativo', (t) async {
+    account['roles'] = ['usuario', 'administrador'];
+    await t.runAsync(() => store.iniciarAccesoSocial('google', admin: true));
+    await screen(t, const RetornoSocialView(code: 'codigo'), 1440);
+    expect(t.widget<PerfilView>(find.byType(PerfilView)).asAdmin, isTrue);
+    expect(find.text('Mi perfil administrativo'), findsOneWidget);
+    expect(find.byType(Drawer), findsNothing);
+    await t.runAsync(store.logout);
+  });
 }

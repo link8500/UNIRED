@@ -73,22 +73,4 @@ class ModulosAdministracion {
     PestanaModuloAdmin('Auditoría', RutasAplicacion.adminAudit),
     PestanaModuloAdmin('Preferencias', RutasAplicacion.settings),
   ];
-  static List<PestanaModuloAdmin> tabs(String current) {
-    const groups = [
-      tutors,
-      training,
-      marketplace,
-      support,
-      users,
-      configuration,
-    ];
-    for (final group in groups) {
-      if (group.any((tab) => tab.route == current)) return group;
-    }
-    final path = Uri.tryParse(current)?.path;
-    for (final group in groups) {
-      if (group.any((tab) => tab.route == path)) return group;
-    }
-    return const [];
-  }
 }
