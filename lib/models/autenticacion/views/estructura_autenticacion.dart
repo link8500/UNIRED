@@ -35,9 +35,12 @@ class EstructuraAutenticacion extends StatelessWidget {
                   return compact
                       ? SingleChildScrollView(
                           child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              SizedBox(
-                                height: 215,
+                              ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  minHeight: 215,
+                                ),
                                 child: _artwork(context, compact: true),
                               ),
                               Padding(
@@ -48,6 +51,7 @@ class EstructuraAutenticacion extends StatelessWidget {
                           ),
                         )
                       : Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Expanded(child: _artwork(context)),
                             Expanded(
@@ -96,6 +100,7 @@ class EstructuraAutenticacion extends StatelessWidget {
   Widget _artwork(BuildContext context, {bool compact = false}) {
     return ArteAutenticacion(
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const MarcaCompleta(),

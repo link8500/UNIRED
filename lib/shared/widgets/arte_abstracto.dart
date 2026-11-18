@@ -12,15 +12,12 @@ class ArteAutenticacion extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        CustomPaint(painter: _PintorArteAutenticacion()),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(28, 36, 28, 38),
-          child: child,
-        ),
-      ],
+    return CustomPaint(
+      painter: _PintorArteAutenticacion(),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(28, 36, 28, 38),
+        child: child,
+      ),
     );
   }
 }
