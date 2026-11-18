@@ -263,6 +263,7 @@ class _EditorPublicacionState extends State<EditorPublicacion> {
   bool _saving = false;
   bool _editingContent = false;
   Json get _courseMetadata => _courseData ?? widget.initial;
+  late bool _courseFree = widget.initial['gratuita'] == true;
   late int _marketStep = widget.startWithReview ? 1 : 0;
   bool _confirmed = false, _mobilePreview = false;
   Json? _courseData;
@@ -314,11 +315,14 @@ class _EditorPublicacionState extends State<EditorPublicacion> {
   double get _discount => widget.isTutorial
       ? 0
       : double.tryParse(_text('descuentoPorcentaje').replaceAll(',', '.')) ?? 0;
-  String get _displayPrice =>
-      widget.isTutorial &&
-          (jsonObject(_courseMetadata['cotizacion'])['pendienteContenido'] ==
-                  true ||
-              _workingId == null)
+  String get _displayPrice => widget.isTutorial && _courseFree
+      ? 'Gratis'
+      : widget.isTutorial && _courseMetadata['gratuita'] == true
+      ? 'Se calcula al guardar'
+      : widget.isTutorial &&
+            (jsonObject(_courseMetadata['cotizacion'])['pendienteContenido'] ==
+                    true ||
+                _workingId == null)
       ? 'Pendiente de preparar el contenido'
       : !widget.isTutorial && _priceType == 'a_consultar'
       ? 'Consultar precio'
@@ -1140,14 +1144,24 @@ class _EditorPublicacionState extends State<EditorPublicacion> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _heading(
-          'Precio calculado por UniRed',
-          'El importe utiliza las tarifas del área y la duración de tu contenido publicado. No necesitas introducir un precio.',
+          'Precio de esta tutoría',
+          'Puedes ofrecerla gratis o usar un precio de demostración calculado con la tarifa del área y la duración del contenido publicado.',
+        ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Ofrecer esta tutoría gratis'),
+          value: _courseFree,
+          onChanged: !_saving
+              ? (value) => setState(() => _courseFree = value)
+              : null,
         ),
         const NotaEditorCurso(
           'El video aporta su duración verificada, el texto se estima por tiempo de lectura y las clases en vivo aportan su duración programada. Las tarifas las administra UniRed.',
         ),
         const SizedBox(height: 20),
-        if (_courseMetadata['cotizacion'] is Map) ...[
+        if (!_courseFree &&
+            _courseMetadata['gratuita'] != true &&
+            _courseMetadata['cotizacion'] is Map) ...[
           InformacionAdmin(
             'Duración para el cálculo',
             '${jsonObject(_courseMetadata['cotizacion'])['duracionMinutos']} minutos',
@@ -1159,8 +1173,10 @@ class _EditorPublicacionState extends State<EditorPublicacion> {
         ],
         InformacionAdmin('Precio del curso', _displayPrice),
         const SizedBox(height: 16),
-        const NotaEditorCurso(
-          'Los importes son de demostración. El estudiante debe solicitar acceso y tú aceptarlo antes de abrir el material. Al publicar, el servidor vuelve a calcular el precio.',
+        NotaEditorCurso(
+          _courseFree
+              ? 'El estudiante tendrá acceso en cuanto apruebes su solicitud.'
+              : 'Tras tu aprobación, el estudiante confirma el pago demo con una tarjeta de prueba para abrir el aula.',
         ),
       ],
     ),
@@ -1666,6 +1682,7 @@ class _EditorPublicacionState extends State<EditorPublicacion> {
         (widget.isTutorial ? 'areaId' : 'categoriaId'): int.parse(_category),
       if (_workingId != null) 'versionLock': _version,
       if (widget.isTutorial) ...{
+        'gratuita': _courseFree,
         'nivel': _level,
         'modalidad': _modality,
         'portadaArchivoId': _coverId,

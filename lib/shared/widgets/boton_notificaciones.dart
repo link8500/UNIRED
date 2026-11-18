@@ -73,7 +73,7 @@ class _BotonNotificacionesState extends State<BotonNotificaciones> {
                     else if (store.notifications.isEmpty)
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 16),
-                        child: Text('No tienes notificaciones nuevas.'),
+                        child: Text('No tienes notificaciones.'),
                       )
                     else
                       ConstrainedBox(
@@ -137,6 +137,19 @@ class _BotonNotificacionesState extends State<BotonNotificaciones> {
                                                 ),
                                               ),
                                           ],
+                                        ),
+                                      ),
+                                      IconButton(
+                                        tooltip: 'Eliminar notificación',
+                                        icon: const Icon(
+                                          Icons.delete_outline,
+                                          size: 18,
+                                        ),
+                                        onPressed: () => runApiAction(
+                                          context,
+                                          () => store.deleteNotification(
+                                            notice.id,
+                                          ),
                                         ),
                                       ),
                                     ],

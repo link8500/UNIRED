@@ -29,8 +29,32 @@ class _AcreditacionViewState extends State<AcreditacionView> {
   String? _id;
   bool _uploading = false;
   late Future<List<Json>> _areas = _loadAreas();
-  Future<List<Json>> _loadAreas() =>
-      _store.api.request('/areas', authenticated: false).then(jsonRows);
+  List<Json> _availableAreas = const [];
+
+  String _stateLabel(Object? state) => switch (state) {
+    'borrador' => 'Documentos pendientes de enviar',
+    'enviada' => 'Enviada · pendiente de revisión',
+    'en_revision' => 'En revisión',
+    'correcciones' => 'Necesita correcciones',
+    'aprobada' => 'Acreditación aprobada',
+    'rechazada' => 'Solicitud rechazada',
+    'retirada' => 'Solicitud retirada',
+    _ => textValue(state),
+  };
+
+  String _areaName(Object? id) => textValue(
+    (widget.review ? _store.areas : _availableAreas)
+        .where((area) => textValue(area['id']) == textValue(id))
+        .firstOrNull?['nombre'],
+    'Área ${textValue(id)}',
+  );
+  Future<List<Json>> _loadAreas() async {
+    _availableAreas = jsonRows(
+      await _store.api.request('/areas', authenticated: false),
+    );
+    return _availableAreas;
+  }
+
   String get _root =>
       widget.review ? '/admin/tutor-applications' : '/me/tutor-applications';
   Future<PaginaApi> _load({int page = 1}) => _store.api.page(_root, page: page);
@@ -52,14 +76,14 @@ class _AcreditacionViewState extends State<AcreditacionView> {
           Text(
             widget.review
                 ? 'Verificación de tutores'
-                : 'Mi acreditación como tutor',
+                : 'Acreditación para ser tutor',
             style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 12),
           Text(
             widget.review
                 ? 'Revisa los documentos de cada solicitud.'
-                : 'Elige el área, adjunta tus documentos y envíalos a revisión.',
+                : 'Selecciona el área que quieres enseñar y envía los documentos solicitados. Cuando aprueben tu acreditación, podrás publicar tutorías de esa área.',
           ),
           const SizedBox(height: 20),
           if (!widget.review)
@@ -128,10 +152,8 @@ class _AcreditacionViewState extends State<AcreditacionView> {
                     for (final request in page.items)
                       Card(
                         child: ListTile(
-                          title: Text(
-                            'Expediente ${textValue(request['id'])} · área ${textValue(request['areaId'])}',
-                          ),
-                          subtitle: Text(textValue(request['estado'])),
+                          title: Text(_areaName(request['areaId'])),
+                          subtitle: Text(_stateLabel(request['estado'])),
                           trailing: widget.review
                               ? BotonAccionApi(
                                   label: request['estado'] == 'enviada'
@@ -162,7 +184,14 @@ class _AcreditacionViewState extends State<AcreditacionView> {
                                       '$_root/${_id!}',
                                     );
                                   }),
-                                  child: const Text('Abrir'),
+                                  child: Text(
+                                    [
+                                          'borrador',
+                                          'correcciones',
+                                        ].contains(request['estado'])
+                                        ? 'Continuar'
+                                        : 'Ver estado',
+                                  ),
                                 ),
                         ),
                       ),
@@ -189,7 +218,7 @@ class _AcreditacionViewState extends State<AcreditacionView> {
                         _details = null;
                       }),
                 icon: const Icon(Icons.arrow_back),
-                label: const Text('Preparar otra solicitud'),
+                label: const Text('Volver a mis solicitudes'),
               ),
             ),
           if (_details != null)
@@ -197,7 +226,10 @@ class _AcreditacionViewState extends State<AcreditacionView> {
               future: _details,
               builder: (_, snapshot) {
                 if (snapshot.hasError) {
-                  return AvisoErrorApi(message: snapshot.error.toString());
+                  return AvisoErrorApi(
+                    message: snapshot.error.toString(),
+                    retry: _reload,
+                  );
                 }
                 if (!snapshot.hasData) {
                   return const EstadoVacioApi(message: '', loading: true);
@@ -300,7 +332,9 @@ class _AcreditacionViewState extends State<AcreditacionView> {
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Text(
-                    'Requisitos del área: ${requiredTypes.join(', ')}.',
+                    editable
+                        ? 'Adjunta los documentos de la lista en PDF o imagen.'
+                        : _stateLabel(row['estado']),
                   ),
                 ),
               for (final d in widget.review ? documents : latest.values)
@@ -370,6 +404,8 @@ class _AcreditacionViewState extends State<AcreditacionView> {
                   );
                   _reload();
                 },
+                success:
+                    'Documentos enviados. Puedes consultar el estado aquí.',
               ),
               BotonAccionApi(
                 enabled: !_uploading,

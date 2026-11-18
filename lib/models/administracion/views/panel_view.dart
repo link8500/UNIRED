@@ -109,7 +109,7 @@ class _PanelViewState extends State<PanelView> {
                   'solicitudesPendientes',
                   'Acreditaciones pendientes',
                   Icons.verified_user_outlined,
-                  RutasAplicacion.adminAccreditation,
+                  RutasAplicacion.adminApplications,
                 ),
                 (
                   'denunciasPendientes',
@@ -121,7 +121,7 @@ class _PanelViewState extends State<PanelView> {
                   'conversaciones',
                   'Conversaciones',
                   Icons.forum_outlined,
-                  RutasAplicacion.messages,
+                  RutasAplicacion.adminConversations,
                 ),
               ])
                 SizedBox(
@@ -147,6 +147,12 @@ class _PanelViewState extends State<PanelView> {
                               fontSize: 19,
                               fontWeight: FontWeight.w700,
                             ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Icon(
+                            Icons.chevron_right,
+                            size: 16,
+                            color: ColoresAplicacion.muted,
                           ),
                         ],
                       ),

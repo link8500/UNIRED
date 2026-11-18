@@ -16,8 +16,22 @@ import 'package:unired/shared/widgets/tarjeta_tutoria.dart';
 import 'package:unired/models/tutorias/widgets/detalles_tutoria.dart';
 
 /// Pantalla principal pública de UniRed.
-class InicioView extends StatelessWidget {
+class InicioView extends StatefulWidget {
   const InicioView({super.key});
+
+  @override
+  State<InicioView> createState() => _InicioViewState();
+}
+
+class _InicioViewState extends State<InicioView> {
+  @override
+  void initState() {
+    super.initState();
+    final store = AplicacionController.instance;
+    if (store.initialized) {
+      store.refreshHome().catchError((Object _) {});
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +56,7 @@ class InicioView extends StatelessWidget {
                       const Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          'Los artículos con más ventas aparecerán aquí.',
+                          'Todavía no hay artículos disponibles.',
                           style: TextStyle(color: ColoresAplicacion.muted),
                         ),
                       )
@@ -54,7 +68,6 @@ class InicioView extends StatelessWidget {
                           final item = featured[index];
                           return TarjetaProducto(
                             item: item,
-                            badgeLabel: 'Popular',
                             isFavorite: store.isFavorite(item),
                             onFavorite: () => runApiAction(
                               context,
@@ -136,6 +149,13 @@ class InicioView extends StatelessWidget {
             icon: const Icon(Icons.add_circle_outline, size: 18),
             label: const Text('Solicitar ayuda en una materia'),
           ),
+        if (signedIn)
+          TextButton.icon(
+            onPressed: () =>
+                NavegadorAplicacion.go(context, RutasAplicacion.accreditation),
+            icon: const Icon(Icons.verified_outlined, size: 18),
+            label: const Text('Quiero ser tutor'),
+          ),
         if (!signedIn)
           TextButton(
             onPressed: () =>
@@ -187,7 +207,7 @@ class InicioView extends StatelessWidget {
               const Antetitulo('Descubre en la comunidad'),
               const SizedBox(height: 9),
               Text(
-                'Artículos más populares',
+                'Artículos recién publicados',
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
             ],
@@ -212,7 +232,7 @@ class InicioView extends StatelessWidget {
         const Divider(height: 1),
         const SizedBox(height: 28),
         EncabezadoSeccionCatalogo(
-          title: 'Tutorías en tendencia',
+          title: 'Tutorías recientes',
           action: TextButton.icon(
             onPressed: () =>
                 NavegadorAplicacion.go(context, RutasAplicacion.tutorials),

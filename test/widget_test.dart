@@ -6,6 +6,7 @@ import 'package:unired/core/datos/remoto/cliente_api.dart';
 import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
 import 'package:unired/models/aplicacion/navegacion/navegador_aplicacion.dart';
 import 'package:unired/models/autenticacion/models/usuario_aplicacion.dart';
+import 'package:unired/models/inicio/views/inicio_view.dart';
 import 'package:unired/shared/temas/tema_aplicacion.dart';
 import 'support/test_adapter.dart';
 
@@ -178,7 +179,7 @@ void main() {
   ) async {
     await tester.pumpWidget(const AplicacionUniRed());
     await tester.pumpAndSettle();
-    expect(find.text('Artículos más populares'), findsOneWidget);
+    expect(find.text('Artículos recién publicados'), findsOneWidget);
     expect(find.text('Apuntes de cálculo II'), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -231,7 +232,7 @@ void main() {
     await tester.pumpAndSettle();
     final count = observer.pushes;
     NavegadorAplicacion.go(
-      tester.element(find.text('Artículos más populares')),
+      tester.element(find.byType(InicioView)),
       RutasAplicacion.home,
     );
     await tester.pumpAndSettle();

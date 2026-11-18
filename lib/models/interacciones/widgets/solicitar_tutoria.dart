@@ -1,6 +1,8 @@
 // Archivo: lib/models/interacciones/widgets/solicitar_tutoria.dart
 // Publica una solicitud de ayuda con el importe que confirmó el estudiante.
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:unired/core/datos/remoto/cliente_api.dart';
 import 'package:unired/core/dominio/datos_api.dart';
 import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
 import 'package:unired/shared/widgets/formulario_api.dart';
@@ -16,12 +18,99 @@ class SolicitarTutoria extends StatefulWidget {
 
 class _SolicitarTutoriaState extends State<SolicitarTutoria> {
   final _store = AplicacionController.instance;
-  late Future<List<Object?>> _options = _load();
+  final _reviewKey = GlobalKey();
+  late Future<Object?> _options = _load();
+  ({Json fields, String amount, bool free})? _quote;
+  bool _publishing = false;
 
-  Future<List<Object?>> _load() => Future.wait([
-    _store.api.request('/areas', authenticated: false),
-    _store.api.object('/commerce/config', authenticated: false),
-  ]);
+  Future<Object?> _load() => _store.api.request('/areas', authenticated: false);
+
+  Future<void> _loadQuote(Json fields) async {
+    final quote = await _store.api.object(
+      '/tutorial-quote',
+      method: 'POST',
+      data: {
+        'areaId': fields['areaId'],
+        'modalidad': fields['modalidad'],
+        'duracionMinutos': fields['duracionMinutos'],
+      },
+    );
+    if (!mounted) return;
+    final amount = textValue(quote['total']);
+    final price = double.tryParse(amount);
+    if (price == null || !price.isFinite || price < 0) {
+      throw const ErrorApi('No pudimos leer el importe. Vuelve a intentarlo.');
+    }
+    setState(() => _quote = (fields: fields, amount: amount, free: price == 0));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final reviewContext = _reviewKey.currentContext;
+      if (reviewContext == null) return;
+      unawaited(
+        Scrollable.ensureVisible(
+          reviewContext,
+          alignment: .15,
+          duration: MediaQuery.disableAnimationsOf(reviewContext)
+              ? Duration.zero
+              : const Duration(milliseconds: 200),
+        ),
+      );
+    });
+  }
+
+  Future<void> _publish() async {
+    final quote = _quote;
+    if (quote == null || _publishing) return;
+    setState(() => _publishing = true);
+    try {
+      await _store.api.object(
+        '/me/tutoring-requests',
+        method: 'POST',
+        data: {...quote.fields, 'precioConfirmado': quote.amount},
+      );
+    } finally {
+      if (mounted) setState(() => _publishing = false);
+    }
+    if (mounted) widget.finished();
+  }
+
+  Widget _review(String amount, bool free) => TarjetaSuave(
+    key: _reviewKey,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Semantics(
+          liveRegion: true,
+          child: Text(
+            free ? 'Tutoría gratuita' : 'Importe demo: C\$ $amount',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          free
+              ? 'Puedes publicar la solicitud sin costo.'
+              : 'Todavía no se realiza ningún pago. Podrás confirmar el pago de demostración cuando un tutor acepte tu solicitud.',
+        ),
+        const SizedBox(height: 16),
+        Align(
+          alignment: Alignment.centerRight,
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              TextButton(
+                onPressed: _publishing
+                    ? null
+                    : () => setState(() => _quote = null),
+                child: const Text('Volver al formulario'),
+              ),
+              BotonAccionApi(label: 'Publicar solicitud', action: _publish),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 
   @override
   Widget build(BuildContext context) => TarjetaSuave(
@@ -38,7 +127,7 @@ class _SolicitarTutoriaState extends State<SolicitarTutoria> {
             ),
             IconButton(
               tooltip: 'Cerrar formulario',
-              onPressed: widget.finished,
+              onPressed: _publishing ? null : widget.finished,
               icon: const Icon(Icons.close),
             ),
           ],
@@ -48,7 +137,7 @@ class _SolicitarTutoriaState extends State<SolicitarTutoria> {
           'Cuéntanos qué necesitas. Los tutores acreditados en esa materia recibirán tu solicitud.',
         ),
         const SizedBox(height: 18),
-        FutureBuilder<List<Object?>>(
+        FutureBuilder<Object?>(
           future: _options,
           builder: (context, snapshot) {
             if (snapshot.hasError) {
@@ -62,102 +151,68 @@ class _SolicitarTutoriaState extends State<SolicitarTutoria> {
             if (!snapshot.hasData) {
               return const EstadoVacioApi(message: '', loading: true);
             }
-            final values = snapshot.data!;
-            final free = jsonObject(values[1])['tutoriasGratuitas'] == true;
-            final areas = jsonRows(values[0]);
+            final areas = jsonRows(snapshot.data);
             if (areas.isEmpty) {
               return const EstadoVacioApi(
                 message: 'No hay áreas disponibles en este momento.',
               );
             }
-            return FormularioApi(
-              title: free ? 'Solicitud gratuita' : 'Solicitud de tutoría',
-              label: free ? 'Enviar solicitud' : 'Revisar importe',
-              initial: const {'modalidad': 'online', 'duracionMinutos': 60},
-              fields: [
-                CampoApi(
-                  'areaId',
-                  'Área de enseñanza',
-                  kind: TipoCampoApi.integerChoice,
-                  choices: {
-                    for (final area in areas)
-                      textValue(area['id']): textValue(area['nombre']),
-                  },
-                ),
-                const CampoApi('materia', 'Asignatura o materia'),
-                const CampoApi('tema', 'Tema que necesitas aprender'),
-                const CampoApi(
-                  'descripcion',
-                  '¿Qué necesitas resolver?',
-                  lines: 4,
-                ),
-                const CampoApi(
-                  'modalidad',
-                  'Modalidad',
-                  kind: TipoCampoApi.choice,
-                  choices: {'online': 'En línea', 'presencial': 'Presencial'},
-                ),
-                const CampoApi(
-                  'duracionMinutos',
-                  'Duración',
-                  kind: TipoCampoApi.integerChoice,
-                  choices: {
-                    '30': '30 minutos',
-                    '60': '1 hora',
-                    '90': '1 hora y media',
-                    '120': '2 horas',
-                  },
-                ),
-              ],
-              submit: (fields) async {
-                var amount = '0.00';
-                if (!free) {
-                  final quote = await _store.api.object(
-                    '/tutorial-quote',
-                    method: 'POST',
-                    data: {
-                      'areaId': fields['areaId'],
-                      'modalidad': fields['modalidad'],
-                      'duracionMinutos': fields['duracionMinutos'],
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Visibility(
+                  visible: _quote == null,
+                  maintainState: true,
+                  child: FormularioApi(
+                    title: 'Materia y horario',
+                    label: 'Revisar importe',
+                    initial: const {
+                      'modalidad': 'online',
+                      'duracionMinutos': 60,
                     },
-                  );
-                  if (!context.mounted) return;
-                  amount = textValue(quote['total']);
-                  final freeQuote = double.tryParse(amount) == 0;
-                  final confirmed = await showDialog<bool>(
-                    context: context,
-                    builder: (dialogContext) => AlertDialog(
-                      title: Text(
-                        freeQuote
-                            ? 'Tutoría gratuita'
-                            : 'Importe demo: C\$ $amount',
+                    fields: [
+                      CampoApi(
+                        'areaId',
+                        'Área de enseñanza',
+                        kind: TipoCampoApi.integerChoice,
+                        choices: {
+                          for (final area in areas)
+                            textValue(area['id']): textValue(area['nombre']),
+                        },
                       ),
-                      content: Text(
-                        freeQuote
-                            ? 'Puedes publicar la solicitud sin costo.'
-                            : 'Podrás confirmar el pago de demostración cuando un tutor acepte tu solicitud.',
+                      const CampoApi('materia', 'Asignatura o materia'),
+                      const CampoApi('tema', 'Tema que necesitas aprender'),
+                      const CampoApi(
+                        'descripcion',
+                        '¿Qué necesitas resolver?',
+                        lines: 4,
                       ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(dialogContext, false),
-                          child: const Text('Volver'),
-                        ),
-                        FilledButton(
-                          onPressed: () => Navigator.pop(dialogContext, true),
-                          child: const Text('Publicar solicitud'),
-                        ),
-                      ],
-                    ),
-                  );
-                  if (confirmed != true || !mounted) return;
-                }
-                await _store.api.object(
-                  '/me/tutoring-requests',
-                  method: 'POST',
-                  data: {...fields, 'precioConfirmado': amount},
-                );
-                if (mounted) widget.finished();
-              },
+                      const CampoApi(
+                        'modalidad',
+                        'Modalidad',
+                        kind: TipoCampoApi.choice,
+                        choices: {
+                          'online': 'En línea',
+                          'presencial': 'Presencial',
+                        },
+                      ),
+                      const CampoApi(
+                        'duracionMinutos',
+                        'Duración',
+                        kind: TipoCampoApi.integerChoice,
+                        choices: {
+                          '30': '30 minutos',
+                          '60': '1 hora',
+                          '90': '1 hora y media',
+                          '120': '2 horas',
+                        },
+                      ),
+                    ],
+                    submit: _loadQuote,
+                  ),
+                ),
+                if (_quote case final quote?) _review(quote.amount, quote.free),
+              ],
             );
           },
         ),

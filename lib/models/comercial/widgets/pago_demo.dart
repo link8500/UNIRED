@@ -20,6 +20,44 @@ Future<Json?> mostrarPagoDemo(
   builder: (_) => _PagoDemo(title: title, amount: amount, operation: operation),
 );
 
+Future<void> mostrarComprobanteDemo(
+  BuildContext context,
+  String title,
+  Object? amount,
+  Object? id,
+  Object? createdAt,
+) {
+  final date = DateTime.tryParse(textValue(createdAt))?.toLocal();
+  return showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('Comprobante de demostración'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title),
+          const SizedBox(height: 12),
+          Text('Importe simulado: C\$ ${textValue(amount)}'),
+          Text('Referencia: DEMO-${textValue(id)}'),
+          if (date != null)
+            Text(
+              MaterialLocalizations.of(dialogContext).formatMediumDate(date),
+            ),
+          const SizedBox(height: 12),
+          const Text('Sin validez fiscal.'),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext),
+          child: const Text('Cerrar'),
+        ),
+      ],
+    ),
+  );
+}
+
 class _PagoDemo extends StatefulWidget {
   const _PagoDemo({
     required this.title,
@@ -40,6 +78,10 @@ class _PagoDemoState extends State<_PagoDemo> {
       _cvv = TextEditingController();
   final _nonce = const Uuid().v4();
   bool _sending = false;
+  bool get _tutoring => const [
+    'tutoria_solicitud',
+    'tutoria_inscripcion',
+  ].contains(widget.operation['concepto']);
 
   void _fillTestCard() {
     final year = ((DateTime.now().year + 1) % 100).toString().padLeft(2, '0');
@@ -273,8 +315,7 @@ class _PagoDemoState extends State<_PagoDemo> {
                                     'clienteId': _nonce,
                                   },
                                 );
-                            if (widget.operation['concepto'] !=
-                                'tutoria_solicitud') {
+                            if (!_tutoring) {
                               AplicacionController.instance
                                   .refreshPublicPromotions();
                             }
@@ -297,7 +338,7 @@ class _PagoDemoState extends State<_PagoDemo> {
                 label: Text(
                   _sending
                       ? 'Confirmando…'
-                      : widget.operation['concepto'] == 'tutoria_solicitud'
+                      : _tutoring
                       ? 'Confirmar pago demo'
                       : 'Simular compra',
                 ),

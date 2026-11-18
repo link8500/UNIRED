@@ -273,6 +273,25 @@ class _MensajesViewState extends State<MensajesView> {
     }
   }
 
+  void _messageLineBreak() {
+    if (_sending) return;
+    final value = _text.value;
+    final selection = value.selection.isValid
+        ? value.selection
+        : TextSelection.collapsed(offset: value.text.length);
+    final result = value.text.replaceRange(
+      selection.start,
+      selection.end,
+      '\n',
+    );
+    if (result.length > 10000) return;
+    _text.value = TextEditingValue(
+      text: result,
+      selection: TextSelection.collapsed(offset: selection.start + 1),
+    );
+    setState(() {});
+  }
+
   String _time(Object? value) {
     final d = DateTime.tryParse(textValue(value))?.toLocal();
     return d == null
@@ -1068,9 +1087,22 @@ class _MensajesViewState extends State<MensajesView> {
                   bindings: {
                     const SingleActivator(
                       LogicalKeyboardKey.enter,
-                      control: true,
+                      includeRepeats: false,
                     ): () =>
                         unawaited(_send()),
+                    const SingleActivator(
+                      LogicalKeyboardKey.numpadEnter,
+                      includeRepeats: false,
+                    ): () =>
+                        unawaited(_send()),
+                    const SingleActivator(
+                      LogicalKeyboardKey.enter,
+                      shift: true,
+                    ): _messageLineBreak,
+                    const SingleActivator(
+                      LogicalKeyboardKey.numpadEnter,
+                      shift: true,
+                    ): _messageLineBreak,
                   },
                   child: TextField(
                     controller: _text,
@@ -1081,8 +1113,9 @@ class _MensajesViewState extends State<MensajesView> {
                     maxLength: 10000,
                     onChanged: (_) => setState(() {}),
                     decoration: const InputDecoration(
-                      hintText:
-                          'Escribe un mensaje… (Ctrl + Enter para enviar)',
+                      hintText: 'Escribe un mensaje…',
+                      helperText: 'Enter envía · Mayús + Enter añade una línea',
+                      helperMaxLines: 2,
                       counterText: '',
                       isDense: true,
                       filled: true,

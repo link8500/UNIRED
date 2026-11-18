@@ -73,10 +73,11 @@ class AplicacionController extends ChangeNotifier {
 
   List<ArticuloMarket> _publicProducts = [];
   List<ArticuloMarket> _popularProducts = [];
+  List<ArticuloMarket> _recentProducts = [];
   List<ArticuloMarket> _ownProducts = [];
   List<ArticuloMarket> _adminProducts = [];
   List<Tutoria> _publicTutorials = [];
-  List<Tutoria> _popularTutorials = [];
+  List<Tutoria> _recentTutorials = [];
   List<Tutoria> _ownTutorials = [];
   List<Tutoria> _adminTutorials = [];
   List<UsuarioComunidad> _users = [];
@@ -87,6 +88,14 @@ class AplicacionController extends ChangeNotifier {
   List<Json> areas = [];
   List<Json> enrollments = [];
   List<Json> tutorGrants = [];
+  bool get hasActiveTutorGrant => tutorGrants.any((grant) {
+    final until = DateTime.tryParse(textValue(grant['validaHasta']));
+    final since = DateTime.tryParse(textValue(grant['validaDesde']));
+    final now = DateTime.now();
+    return grant['estado'] == 'vigente' &&
+        (until == null || until.isAfter(now)) &&
+        (since == null || !since.isAfter(now));
+  });
   Json dashboard = {};
   Json analytics = {};
   PaginaApi? marketPage;
@@ -119,8 +128,9 @@ class AplicacionController extends ChangeNotifier {
   List<Tutoria> get publishedTutorials => List.unmodifiable(_publicTutorials);
   List<ArticuloMarket> get bestSellingProducts =>
       List.unmodifiable(_popularProducts);
-  List<ArticuloMarket> get featuredProducts => bestSellingProducts;
-  List<Tutoria> get topTutorials => List.unmodifiable(_popularTutorials);
+  List<ArticuloMarket> get featuredProducts =>
+      List.unmodifiable(_recentProducts);
+  List<Tutoria> get topTutorials => List.unmodifiable(_recentTutorials);
   List<ArticuloMarket> get myProducts => List.unmodifiable(_ownProducts);
   List<Tutoria> get myTutorials => List.unmodifiable(_ownTutorials);
   List<ArticuloMarket> get moderatedProducts =>
@@ -231,27 +241,20 @@ class AplicacionController extends ChangeNotifier {
             ]);
             categories = jsonRows(catalog[0]);
             areas = jsonRows(catalog[1]);
-            final popular = await Future.wait([
-              api.page(
-                '/listings',
-                query: {'sort': 'popular'},
-                authenticated: false,
-              ),
-              api.page(
-                '/courses',
-                query: {'sort': 'popular'},
-                authenticated: false,
-              ),
-            ]);
-            _popularProducts = popular[0].items
-                .take(4)
-                .map(productFromJson)
-                .toList();
-            _popularTutorials = popular[1].items
-                .take(6)
-                .map(tutorialFromJson)
-                .toList();
             await Future.wait([
+              refreshHome(),
+              api
+                  .page(
+                    '/listings',
+                    query: {'sort': 'popular'},
+                    authenticated: false,
+                  )
+                  .then(
+                    (page) => _popularProducts = page.items
+                        .take(4)
+                        .map(productFromJson)
+                        .toList(),
+                  ),
               searchMarket(query: _marketQuery),
               searchCourses(query: _coursesQuery),
             ]);
@@ -265,6 +268,29 @@ class AplicacionController extends ChangeNotifier {
         })
         .whenComplete(() => _initializing = null);
     return _initializing!;
+  }
+
+  int _homeRequest = 0;
+  Future<void> refreshHome() async {
+    final request = ++_homeRequest;
+    final catalog = await Future.wait([
+      api.page(
+        '/listings',
+        query: {'sort': 'recent', 'estado': 'publicado'},
+        authenticated: false,
+        foreground: false,
+      ),
+      api.page(
+        '/courses',
+        query: {'sort': 'recent'},
+        authenticated: false,
+        foreground: false,
+      ),
+    ]);
+    if (_disposed || request != _homeRequest) return;
+    _recentProducts = catalog[0].items.take(8).map(productFromJson).toList();
+    _recentTutorials = catalog[1].items.take(6).map(tutorialFromJson).toList();
+    notifyListeners();
   }
 
   Future<void> searchMarket({Json? query, bool more = false}) async {
@@ -687,6 +713,12 @@ class AplicacionController extends ChangeNotifier {
   Future<void> markNotificationsRead() async {
     await api.object('/me/notifications/read-all', method: 'PATCH');
     await refreshNotifications();
+  }
+
+  Future<void> deleteNotification(String id) async {
+    final epoch = sessionEpoch;
+    await api.object('/me/notifications/$id', method: 'DELETE');
+    if (epoch == sessionEpoch) await refreshNotifications(foreground: false);
   }
 
   Future<void> toggleFavorite(ArticuloMarket item) async {

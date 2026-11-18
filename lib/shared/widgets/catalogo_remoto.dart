@@ -107,13 +107,27 @@ class _CatalogoRemotoState extends State<CatalogoRemoto> {
               if (widget.tutorials)
                 Padding(
                   padding: const EdgeInsets.only(top: 14, bottom: 8),
-                  child: OutlinedButton.icon(
-                    onPressed: () => NavegadorAplicacion.go(
-                      context,
-                      '${RutasAplicacion.tutoringRequests}?new=1',
-                    ),
-                    icon: const Icon(Icons.support_agent, size: 18),
-                    label: const Text('Solicitar tutoría sobre un tema'),
+                  child: Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () => NavegadorAplicacion.go(
+                          context,
+                          '${RutasAplicacion.tutoringRequests}?new=1',
+                        ),
+                        icon: const Icon(Icons.support_agent, size: 18),
+                        label: const Text('Solicitar tutoría sobre un tema'),
+                      ),
+                      TextButton.icon(
+                        onPressed: () => NavegadorAplicacion.go(
+                          context,
+                          RutasAplicacion.accreditation,
+                        ),
+                        icon: const Icon(Icons.verified_outlined),
+                        label: const Text('Quiero ser tutor'),
+                      ),
+                    ],
                   ),
                 ),
               const SizedBox(height: 8),
@@ -242,21 +256,24 @@ class _CatalogoRemotoState extends State<CatalogoRemoto> {
                     icon: const Icon(Icons.refresh),
                     label: const Text('Actualizar'),
                   ),
-                  TextButton.icon(
-                    onPressed: () => NavegadorAplicacion.go(
-                      context,
-                      _store.currentUser == null
-                          ? RutasAplicacion.login
-                          : RutasAplicacion.publication(
-                              tutorial: widget.tutorials,
-                              admin: false,
-                            ),
+                  if (!widget.tutorials || _store.hasActiveTutorGrant)
+                    TextButton.icon(
+                      onPressed: () => NavegadorAplicacion.go(
+                        context,
+                        _store.currentUser == null
+                            ? RutasAplicacion.login
+                            : RutasAplicacion.publication(
+                                tutorial: widget.tutorials,
+                                admin: false,
+                              ),
+                      ),
+                      icon: const Icon(Icons.add),
+                      label: Text(
+                        widget.tutorials
+                            ? 'Crear tutoría'
+                            : 'Publicar artículo',
+                      ),
                     ),
-                    icon: const Icon(Icons.add),
-                    label: Text(
-                      widget.tutorials ? 'Crear tutoría' : 'Publicar artículo',
-                    ),
-                  ),
                 ],
               ),
               const SizedBox(height: 28),

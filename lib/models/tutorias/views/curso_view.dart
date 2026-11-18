@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:unired/core/dominio/datos_api.dart';
 import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
 import 'package:unired/models/aplicacion/navegacion/navegador_aplicacion.dart';
+import 'package:unired/models/comercial/widgets/pago_demo.dart';
 import 'package:unired/core/utilidades/formato_presentacion.dart';
 import 'package:unired/shared/temas/colores_aplicacion.dart';
 import 'package:unired/models/tutorias/widgets/gestion_curso.dart';
@@ -206,6 +207,9 @@ class _CursoViewState extends State<CursoView> with RouteAware {
               'activa',
               'completada',
             ].contains(enrollment?['estado']);
+            final needsPayment =
+                enrollment?['estado'] == 'solicitada' &&
+                enrollment?['aprobadaParaPagoEn'] != null;
             final enrollmentId = active ? textValue(enrollment?['id']) : null;
             final sections = jsonRows(row['secciones']);
             final classroom = widget.classroom && active;
@@ -252,7 +256,33 @@ class _CursoViewState extends State<CursoView> with RouteAware {
                         _reload();
                       },
                     ),
-                    if (!owner && !active)
+                    if (needsPayment)
+                      FilledButton.icon(
+                        icon: const Icon(Icons.credit_card_outlined),
+                        label: const Text('Pagar con tarjeta de prueba'),
+                        onPressed: () async {
+                          final result = await mostrarPagoDemo(
+                            context,
+                            title: item.title,
+                            amount: textValue(enrollment!['importeDemo']),
+                            operation: {
+                              'concepto': 'tutoria_inscripcion',
+                              'recursoId': enrollment['id'],
+                            },
+                          );
+                          if (result == null || !context.mounted) return;
+                          final payment = jsonObject(result['pago']);
+                          _reload();
+                          await mostrarComprobanteDemo(
+                            context,
+                            item.title,
+                            payment['importe'],
+                            payment['id'],
+                            payment['creadoEn'],
+                          );
+                        },
+                      )
+                    else if (!owner && !active)
                       BotonAccionApi(
                         label: enrollment?['estado'] == 'solicitada'
                             ? 'Solicitud enviada'
@@ -284,6 +314,18 @@ class _CursoViewState extends State<CursoView> with RouteAware {
                         ),
                         icon: const Icon(Icons.play_circle_outline),
                         label: const Text('Abrir aula'),
+                      ),
+                    if (enrollment?['pagoDemoId'] != null)
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.receipt_long_outlined),
+                        label: const Text('Ver comprobante'),
+                        onPressed: () => mostrarComprobanteDemo(
+                          context,
+                          item.title,
+                          enrollment?['pagoDemoImporte'],
+                          enrollment?['pagoDemoId'],
+                          enrollment?['pagoDemoFecha'],
+                        ),
                       ),
                     if (enrollment?['estado'] == 'activa')
                       BotonAccionApi(
@@ -327,11 +369,15 @@ class _CursoViewState extends State<CursoView> with RouteAware {
                   ],
                 ),
                 if (!owner && !classroom && !active)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 12),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
                     child: Text(
-                      'El tutor debe aceptar tu solicitud para habilitar el material privado, incluso si la tutoría es gratuita.',
-                      style: TextStyle(fontSize: 12),
+                      needsPayment
+                          ? 'Tu solicitud fue aceptada. Confirma el pago demo para abrir el aula.'
+                          : item.amount == 0
+                          ? 'El aula se habilita cuando el tutor aprueba tu solicitud.'
+                          : 'El tutor revisará tu solicitud. Cuando la acepte, podrás confirmar el pago demo y abrir el aula.',
+                      style: const TextStyle(fontSize: 12),
                     ),
                   ),
                 const SizedBox(height: 24),

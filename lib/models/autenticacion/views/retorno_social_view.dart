@@ -82,14 +82,17 @@ class _RetornoSocialViewState extends State<RetornoSocialView> {
   }
 
   void _finish() {
-    final profile = _result['volverAdmin'] == true
+    final admin = _result['volverAdmin'] == true;
+    final profile = admin
         ? RutasAplicacion.adminProfile
         : RutasAplicacion.profile;
     final destination = _store.currentUser?.verified != true
         ? RutasAplicacion.verifyEmail
         : _result['vincular'] == true
         ? '$profile?tab=security'
-        : profile;
+        : admin || _store.isAdministrator
+        ? RutasAplicacion.dashboard
+        : RutasAplicacion.home;
     Navigator.of(context).pushReplacementNamed(destination);
   }
 

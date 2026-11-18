@@ -9,7 +9,8 @@ import 'package:unired/core/dominio/contratos/navegador_social.dart';
 import 'package:unired/core/dominio/datos_api.dart';
 import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
 import 'package:unired/models/aplicacion/navegacion/navegador_aplicacion.dart';
-import 'package:unired/models/perfil/views/perfil_view.dart';
+import 'package:unired/models/inicio/views/inicio_view.dart';
+import 'package:unired/models/administracion/views/panel_view.dart';
 import 'package:unired/models/autenticacion/models/usuario_aplicacion.dart';
 import 'package:unired/models/autenticacion/views/retorno_social_view.dart';
 import 'package:unired/models/autenticacion/widgets/botones_acceso_social.dart';
@@ -131,10 +132,6 @@ void main() {
       EnginePhase.sendSemanticsUpdate,
       const Duration(seconds: 4),
     );
-    final renderingError = t.takeException();
-    if (renderingError != null) {
-      throw renderingError;
-    }
   }
 
   test(
@@ -286,26 +283,29 @@ void main() {
     expect(adapter.requests, isEmpty);
     expect(t.takeException(), isNull);
   });
-  testWidgets(
-    'una cuenta nueva abre su perfil y puede completar universidad y carrera',
-    (t) async {
-      account['perfil'] = {};
-      await t.runAsync(() => store.iniciarAccesoSocial('google'));
-      await screen(t, const RetornoSocialView(code: 'codigo'), 390);
-      expect(find.byType(PerfilView), findsOneWidget);
-      expect(find.text('Completa tu perfil'), findsOneWidget);
-      expect(t.takeException(), isNull);
-      // Cancela la consulta periódica de notificaciones antes del cierre del test.
-      await t.runAsync(store.logout);
-    },
-  );
-  testWidgets('el retorno del equipo abre el perfil administrativo', (t) async {
-    account['roles'] = ['usuario', 'administrador'];
-    await t.runAsync(() => store.iniciarAccesoSocial('google', admin: true));
-    await screen(t, const RetornoSocialView(code: 'codigo'), 1440);
-    expect(t.widget<PerfilView>(find.byType(PerfilView)).asAdmin, isTrue);
-    expect(find.text('Mi perfil administrativo'), findsOneWidget);
-    expect(find.byType(Drawer), findsNothing);
+  testWidgets('una cuenta nueva llega al inicio', (t) async {
+    account['perfil'] = {};
+    await t.runAsync(() => store.iniciarAccesoSocial('google'));
+    await screen(t, const RetornoSocialView(code: 'codigo'), 390);
+    expect(find.byType(InicioView), findsOneWidget);
+    expect(t.takeException(), isNull);
+    // Cancela la consulta periódica de notificaciones antes del cierre del test.
     await t.runAsync(store.logout);
   });
+  for (final width in [390.0, 1440.0]) {
+    testWidgets(
+      'el retorno del equipo abre el resumen administrativo a $width',
+      (t) async {
+        account['roles'] = ['usuario', 'administrador'];
+        await t.runAsync(
+          () => store.iniciarAccesoSocial('google', admin: true),
+        );
+        await screen(t, const RetornoSocialView(code: 'codigo'), width);
+        expect(find.byType(PanelView), findsOneWidget);
+        expect(find.byType(Drawer), findsNothing);
+        expect(find.text('Sin cuentas registradas'), findsOneWidget);
+        await t.runAsync(store.logout);
+      },
+    );
+  }
 }

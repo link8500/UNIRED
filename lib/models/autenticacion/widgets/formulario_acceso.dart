@@ -93,9 +93,9 @@ class _FormularioAccesoState extends State<FormularioAcceso> {
             Navigator.of(context).pushReplacementNamed(
               store.currentUser?.verified != true
                   ? RutasAplicacion.verifyEmail
-                  : widget.admin
-                  ? RutasAplicacion.adminProfile
-                  : RutasAplicacion.profile,
+                  : widget.admin || store.isAdministrator
+                  ? RutasAplicacion.dashboard
+                  : RutasAplicacion.home,
             );
           },
         ),

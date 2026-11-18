@@ -127,13 +127,20 @@ void main() {
           ),
           width,
         );
-        expect(find.text('Precio calculado por UniRed'), findsOneWidget);
+        expect(find.text('Precio de esta tutoría'), findsOneWidget);
         expect(find.text('NIO 180.00'), findsAtLeastNWidgets(1));
         expect(
           find.byKey(const ValueKey('publication-precioBase')),
           findsNothing,
         );
-        expect(find.text('Gratuita'), findsNothing);
+        await t.ensureVisible(find.text('Ofrecer esta tutoría gratis'));
+        await t.tap(find.text('Ofrecer esta tutoría gratis'));
+        await t.pumpAndSettle();
+        expect(
+          t.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+          isTrue,
+        );
+        expect(find.text('Gratis'), findsAtLeastNWidgets(1));
         expect(t.takeException(), isNull);
       },
     );

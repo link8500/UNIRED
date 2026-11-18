@@ -238,49 +238,49 @@ class DistribucionPanel extends StatelessWidget {
             subtitle: 'Activas, pendientes y suspendidas',
           ),
           const SizedBox(height: 24),
-          SizedBox(
-            height: 125,
-            child: total == 0
-                ? const EstadoVacioAdmin('Sin cuentas registradas', message: '')
-                : Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      PieChart(
-                        PieChartData(
-                          centerSpaceRadius: 43,
-                          sectionsSpace: 3,
-                          sections: [
-                            for (var i = 0; i < states.length; i++)
-                              if (intValue(states[i]['total']) > 0)
-                                PieChartSectionData(
-                                  value: numberValue(states[i]['total']),
-                                  color: colors[i % colors.length],
-                                  radius: 15,
-                                  showTitle: false,
-                                ),
-                          ],
-                        ),
-                        duration: Duration.zero,
-                      ),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            '$total',
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w700,
+          if (total == 0)
+            const Center(
+              child: EstadoVacioAdmin('Sin cuentas registradas', message: ''),
+            )
+          else
+            SizedBox(
+              height: 125,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  PieChart(
+                    PieChartData(
+                      centerSpaceRadius: 43,
+                      sectionsSpace: 3,
+                      sections: [
+                        for (var i = 0; i < states.length; i++)
+                          if (intValue(states[i]['total']) > 0)
+                            PieChartSectionData(
+                              value: numberValue(states[i]['total']),
+                              color: colors[i % colors.length],
+                              radius: 15,
+                              showTitle: false,
                             ),
-                          ),
-                          const Text(
-                            'usuarios',
-                            style: TextStyle(fontSize: 10),
-                          ),
-                        ],
+                      ],
+                    ),
+                    duration: Duration.zero,
+                  ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '$total',
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
+                      const Text('usuarios', style: TextStyle(fontSize: 10)),
                     ],
                   ),
-          ),
+                ],
+              ),
+            ),
           const SizedBox(height: 18),
           for (var i = 0; i < states.length; i++)
             Padding(

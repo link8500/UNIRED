@@ -109,7 +109,9 @@ class _AccesoCuentaViewState extends State<AccesoCuentaView> {
                 context,
                 store.currentUser == null
                     ? RutasAplicacion.login
-                    : RutasAplicacion.profile,
+                    : store.isAdministrator
+                    ? RutasAplicacion.dashboard
+                    : RutasAplicacion.home,
               );
             }
           },

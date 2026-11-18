@@ -129,46 +129,40 @@ class PerfilView extends StatelessWidget {
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: 18),
-        DecoratedBox(
-          decoration: BoxDecoration(
-            color: ColoresAplicacion.navy,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Row(
-              children: [
-                AvatarAdmin(name: user.name, fileId: user.avatarId, radius: 30),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        user.name,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                        ),
+        SuperficieAdmin(
+          padding: const EdgeInsets.all(24),
+          child: Row(
+            children: [
+              AvatarAdmin(name: user.name, fileId: user.avatarId, radius: 30),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      user.name,
+                      style: const TextStyle(
+                        color: ColoresAplicacion.ink,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
                       ),
-                      const SizedBox(height: 5),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      user.email,
+                      style: const TextStyle(color: ColoresAplicacion.muted),
+                    ),
+                    if (roles.isNotEmpty) ...[
+                      const SizedBox(height: 9),
                       Text(
-                        user.email,
-                        style: const TextStyle(color: Colors.white70),
+                        roles.join(' · '),
+                        style: const TextStyle(color: ColoresAplicacion.blue),
                       ),
-                      if (roles.isNotEmpty) ...[
-                        const SizedBox(height: 9),
-                        Text(
-                          roles.join(' · '),
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                      ],
                     ],
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 16),
@@ -321,9 +315,9 @@ class PerfilView extends StatelessWidget {
                 Icons.verified_outlined,
                 color: ColoresAplicacion.blue,
               ),
-              title: const Text('Acreditación de tutor'),
+              title: const Text('Documentos para ser tutor'),
               subtitle: const Text(
-                'Consulta tu solicitud y las áreas que puedes impartir.',
+                'Envía tus documentos o consulta el estado de tu solicitud.',
               ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => NavegadorAplicacion.go(

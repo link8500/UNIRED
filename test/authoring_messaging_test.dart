@@ -361,7 +361,20 @@ void main() {
           'Me interesa el artículo.',
         );
         await t.pumpAndSettle();
-        await t.tap(find.byTooltip('Enviar mensaje'));
+        await t.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+        await t.sendKeyEvent(LogicalKeyboardKey.enter);
+        await t.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+        expect(
+          t.widget<TextField>(find.byType(TextField).last).controller!.text,
+          'Me interesa el artículo.\n',
+        );
+        expect(
+          adapter.requests.where(
+            (r) => r.method == 'POST' && r.path == '/conversations/10/messages',
+          ),
+          isEmpty,
+        );
+        await t.sendKeyEvent(LogicalKeyboardKey.enter);
         await t.pumpAndSettle();
         final sent = adapter.requests
             .where(

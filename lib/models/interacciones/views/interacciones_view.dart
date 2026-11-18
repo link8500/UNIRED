@@ -90,48 +90,12 @@ class _InteraccionesViewState extends State<InteraccionesView> {
     if (!mounted || payment == null) return;
     final receipt = jsonObject(payment['pago']);
     _refresh();
-    await _showReceipt(
+    await mostrarComprobanteDemo(
+      context,
       textValue(row['tema']),
       receipt['importe'],
       receipt['id'],
       receipt['creadoEn'],
-    );
-  }
-
-  Future<void> _showReceipt(
-    String title,
-    Object? amount,
-    Object? id,
-    Object? createdAt,
-  ) {
-    final date = DateTime.tryParse(textValue(createdAt))?.toLocal();
-    return showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Comprobante de demostración'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title),
-            const SizedBox(height: 12),
-            Text('Importe simulado: C\$ ${textValue(amount)}'),
-            Text('Referencia: DEMO-${textValue(id)}'),
-            if (date != null)
-              Text(
-                MaterialLocalizations.of(dialogContext).formatMediumDate(date),
-              ),
-            const SizedBox(height: 12),
-            const Text('Sin validez fiscal.'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cerrar'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -203,13 +167,13 @@ class _InteraccionesViewState extends State<InteraccionesView> {
                   : 'Revisa las propuestas recibidas y enviadas. El chat se habilita después de aceptar la oferta.',
             ),
             const SizedBox(height: 20),
-            if (widget.tutorials)
+            if (widget.tutorials && !_new)
               Align(
                 alignment: Alignment.centerLeft,
                 child: FilledButton.icon(
-                  onPressed: () => setState(() => _new = !_new),
-                  icon: Icon(_new ? Icons.close : Icons.add),
-                  label: Text(_new ? 'Cerrar formulario' : 'Solicitar tutoría'),
+                  onPressed: () => setState(() => _new = true),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Pedir ayuda a un tutor'),
                 ),
               ),
             if (_new) ...[
@@ -503,7 +467,8 @@ class _InteraccionesViewState extends State<InteraccionesView> {
                 ],
                 if (request && owner && row['pagoDemoId'] != null)
                   OutlinedButton.icon(
-                    onPressed: () => _showReceipt(
+                    onPressed: () => mostrarComprobanteDemo(
+                      context,
                       title,
                       row['precio'],
                       row['pagoDemoId'],

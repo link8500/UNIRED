@@ -137,7 +137,9 @@ class _GestionCursoState extends State<GestionCurso> {
                     title: Text(textValue(student['nombre'])),
                     subtitle: Text(
                       student['estado'] == 'solicitada'
-                          ? 'Esperando tu aprobación'
+                          ? student['aprobadaParaPagoEn'] != null
+                                ? 'Esperando el pago demo del estudiante'
+                                : 'Esperando tu aprobación'
                           : '${textValue(student['estado'])} · ${textValue(student['completadas'])} lecciones',
                     ),
                     children: [
@@ -148,30 +150,30 @@ class _GestionCursoState extends State<GestionCurso> {
                           finished: _reloadStudents,
                         ),
                       if (student['estado'] == 'solicitada') ...[
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            child: BotonAccionApi(
-                              label: 'Aceptar solicitud',
-                              icon: Icons.verified_user_outlined,
-                              success:
-                                  'Solicitud aceptada. El estudiante ya tiene acceso al material.',
-                              action: () async {
-                                await api.object(
-                                  '$root/enrollments/${textValue(student['id'])}',
-                                  method: 'PATCH',
-                                  data: {
-                                    'estado': 'activa',
-                                    'motivo':
-                                        'Solicitud aceptada por el tutor. Acceso al material autorizado.',
-                                  },
-                                );
-                                _reloadStudents();
-                              },
+                        if (student['aprobadaParaPagoEn'] == null)
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              child: BotonAccionApi(
+                                label: 'Aceptar solicitud',
+                                icon: Icons.verified_user_outlined,
+                                success: 'Solicitud aceptada.',
+                                action: () async {
+                                  await api.object(
+                                    '$root/enrollments/${textValue(student['id'])}',
+                                    method: 'PATCH',
+                                    data: {
+                                      'estado': 'activa',
+                                      'motivo':
+                                          'Solicitud aceptada por el tutor. Acceso al material autorizado.',
+                                    },
+                                  );
+                                  _reloadStudents();
+                                },
+                              ),
                             ),
                           ),
-                        ),
                         ExpansionTile(
                           title: const Text('Rechazar solicitud'),
                           children: [

@@ -21,6 +21,7 @@ void main() {
   var state = 'pendiente';
   var demoPayment = false;
   var paymentConfirmed = false;
+  var quoteTotal = '0.00';
   Json page(List<Json> rows) => {
     'items': rows,
     'total': rows.length,
@@ -44,14 +45,15 @@ void main() {
     state = 'pendiente';
     demoPayment = false;
     paymentConfirmed = false;
+    quoteTotal = '0.00';
     adapter = TestAdapter((r) async {
       if (r.path == '/areas') {
         return TestReply([
           {'id': 1, 'nombre': 'Programación'},
         ]);
       }
-      if (r.path == '/commerce/config') {
-        return TestReply({'tutoriasGratuitas': true});
+      if (r.path == '/tutorial-quote') {
+        return TestReply({'total': quoteTotal}, status: 201);
       }
       if (r.path == '/me/tutoring-requests' && r.method == 'POST') {
         return TestReply({'id': '9', 'estado': 'publicada'}, status: 201);
@@ -229,48 +231,71 @@ void main() {
         expect(t.takeException(), isNull);
       },
     );
-    testWidgets('solicitud gratuita a $width: se publica en un solo paso', (
-      t,
-    ) async {
-      var completed = 0;
-      final key = await open(
-        t,
-        Scaffold(
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: SolicitarTutoria(finished: () => completed++),
+    testWidgets(
+      'solicitud a $width: confirma la tarifa del área antes de publicar',
+      (t) async {
+        var completed = 0;
+        final free = width < 600;
+        quoteTotal = free ? '0.00' : '180.00';
+        final key = await open(
+          t,
+          Scaffold(
+            body: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: SolicitarTutoria(finished: () => completed++),
+            ),
           ),
-        ),
-        width,
-      );
-      await t.tap(find.text('Área de enseñanza'));
-      await t.pumpAndSettle();
-      await t.tap(find.text('Programación').last);
-      await t.pumpAndSettle();
-      final fields = find.byType(TextFormField);
-      await t.enterText(fields.at(0), 'Desarrollo web');
-      await t.enterText(fields.at(1), 'Entender los componentes de Angular');
-      await t.enterText(
-        fields.at(2),
-        'Necesito organizar los componentes y comunicar sus datos.',
-      );
-      expect(find.text('Solicitud gratuita'), findsOneWidget);
-      expect(adapter.requests.where((r) => r.method == 'POST'), isEmpty);
-      await preview(t, key, 'solicitud-gratuita-$width');
-      await t.ensureVisible(find.text('Enviar solicitud'));
-      await t.tap(find.text('Enviar solicitud'));
-      await t.pumpAndSettle();
-      expect(completed, 1);
-      expect(
-        adapter.requests
-            .singleWhere(
-              (r) => r.path == '/me/tutoring-requests' && r.method == 'POST',
-            )
-            .data,
-        containsPair('precioConfirmado', '0.00'),
-      );
-      expect(t.takeException(), isNull);
-    });
+          width,
+        );
+        await t.tap(find.text('Área de enseñanza'));
+        await t.pumpAndSettle();
+        await t.tap(find.text('Programación').last);
+        await t.pumpAndSettle();
+        final fields = find.byType(TextFormField);
+        await t.enterText(fields.at(0), 'Desarrollo web');
+        await t.enterText(fields.at(1), 'Entender los componentes de Angular');
+        await t.enterText(
+          fields.at(2),
+          'Necesito organizar los componentes y comunicar sus datos.',
+        );
+        expect(find.text('Materia y horario'), findsOneWidget);
+        expect(adapter.requests.where((r) => r.method == 'POST'), isEmpty);
+        await preview(t, key, 'solicitud-$width');
+        final review = find.text('Revisar importe');
+        await t.ensureVisible(review);
+        await t.tap(review);
+        await t.pumpAndSettle();
+        expect(
+          find.text(free ? 'Tutoría gratuita' : 'Importe demo: C\$ 180.00'),
+          findsOneWidget,
+        );
+        expect(find.byType(CircularProgressIndicator), findsNothing);
+        expect(
+          adapter.requests.where((r) => r.method == 'POST').map((r) => r.path),
+          ['/tutorial-quote'],
+        );
+        await t.tap(find.text('Volver al formulario'));
+        await t.pumpAndSettle();
+        expect(find.text('Desarrollo web'), findsOneWidget);
+        expect(find.text('Programación'), findsOneWidget);
+        expect(completed, 0);
+        await t.ensureVisible(review);
+        await t.tap(review);
+        await t.pumpAndSettle();
+        await t.tap(find.text('Publicar solicitud'));
+        await t.pumpAndSettle();
+        expect(completed, 1);
+        expect(
+          adapter.requests
+              .singleWhere(
+                (r) => r.path == '/me/tutoring-requests' && r.method == 'POST',
+              )
+              .data,
+          containsPair('precioConfirmado', quoteTotal),
+        );
+        expect(t.takeException(), isNull);
+      },
+    );
     testWidgets(
       'tutoría a $width: compartir material explica cómo preparar un curso',
       (t) async {
