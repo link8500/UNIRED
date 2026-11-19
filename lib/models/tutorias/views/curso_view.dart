@@ -355,6 +355,18 @@ class _CursoViewState extends State<CursoView> with RouteAware {
                         },
                       ),
                     if (owner && !widget.manage)
+                      FilledButton.icon(
+                        onPressed: () => NavegadorAplicacion.go(
+                          context,
+                          RutasAplicacion.courseRequests(
+                            id: widget.id,
+                            admin: _store.isAdmin,
+                          ),
+                        ),
+                        icon: const Icon(Icons.people_outline),
+                        label: const Text('Ver solicitudes y alumnos'),
+                      ),
+                    if (owner && !widget.manage)
                       OutlinedButton(
                         onPressed: () => NavegadorAplicacion.go(
                           context,

@@ -5,18 +5,22 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:unired/core/datos/remoto/cliente_api.dart';
 import 'package:unired/core/dominio/datos_api.dart';
 import 'package:unired/models/aplicacion/controllers/aplicacion_controller.dart';
+import 'package:unired/models/aplicacion/navegacion/navegador_aplicacion.dart';
 import 'package:unired/models/autenticacion/models/usuario_aplicacion.dart';
 import 'package:unired/models/mensajeria/views/mensajes_view.dart';
 import 'package:unired/models/mensajeria/widgets/asunto_conversacion.dart';
 import 'package:unired/models/tutorias/views/curso_view.dart';
 import 'package:unired/models/tutorias/widgets/gestion_curso.dart';
 import 'package:unired/shared/temas/tema_aplicacion.dart';
+import 'package:unired/shared/widgets/boton_notificaciones.dart';
 import 'support/test_adapter.dart';
 
 void main() {
   late AplicacionController service;
   late TestAdapter adapter;
   String? state;
+  late bool paid;
+  String? approvedAt;
   final course = <String, Object?>{
     'id': '9',
     'tutorId': 2,
@@ -50,6 +54,8 @@ void main() {
   };
   setUp(() {
     state = null;
+    paid = false;
+    approvedAt = null;
     adapter = TestAdapter((r) async {
       if (r.responseType == ResponseType.bytes) {
         return TestReply(
@@ -59,6 +65,38 @@ void main() {
         );
       }
       if (r.path == '/courses/9') return TestReply(course);
+      if (r.path == '/me/courses/9') return TestReply(course);
+      if (r.path == '/me/courses') {
+        return TestReply({
+          'items': [course],
+          'total': 1,
+          'page': 1,
+          'limit': 20,
+        });
+      }
+      if (r.path == '/me/notifications') {
+        final notices = [
+          {
+            'id': '5',
+            'tipo': 'inscripcion',
+            'titulo': 'Nueva solicitud de acceso a tu tutoría',
+            'datos': {'cursoId': '9', 'inscripcionId': '90'},
+          },
+          {
+            'id': '4',
+            'tipo': 'mensaje',
+            'titulo': 'Tienes un nuevo mensaje',
+            'datos': {'conversacionId': '10'},
+          },
+          {'id': '3', 'tipo': 'sistema', 'titulo': 'Aviso general'},
+        ];
+        return TestReply({
+          'items': notices,
+          'total': notices.length,
+          'page': 1,
+          'limit': 20,
+        });
+      }
       if (r.path == '/courses/9/enrollments') {
         state = 'solicitada';
         return TestReply({
@@ -86,6 +124,7 @@ void main() {
                 'alumnoId': 3,
                 'nombre': 'Sofía Martínez',
                 'estado': state,
+                'aprobadaParaPagoEn': approvedAt,
                 'completadas': 0,
               },
           ],
@@ -95,8 +134,16 @@ void main() {
         });
       }
       if (r.path == '/me/courses/9/enrollments/90') {
-        state = textValue(jsonObject(r.data)['estado']);
-        return TestReply({'id': '90', 'estado': state});
+        if (paid) {
+          approvedAt = '2026-11-18T17:00:00Z';
+        } else {
+          state = textValue(jsonObject(r.data)['estado']);
+        }
+        return TestReply({
+          'id': '90',
+          'estado': state,
+          'aprobadaParaPagoEn': approvedAt,
+        });
       }
       if (r.path == '/me/conversations') {
         return TestReply({
@@ -194,12 +241,72 @@ void main() {
       expect(jsonObject(approval.data)['estado'], 'activa');
       expect(externalReloads, 0);
       expect(find.text('No hay solicitudes pendientes.'), findsOneWidget);
-      if (find.text('Entendido').evaluate().isNotEmpty) {
-        await t.tap(find.text('Entendido'));
-        await t.pumpAndSettle();
-      }
+      expect(
+        find.text('Solicitud aceptada. El estudiante ya tiene acceso al aula.'),
+        findsOneWidget,
+      );
       expect(t.takeException(), isNull);
       await t.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'la campana abre las solicitudes del tutor y distingue los avisos de texto',
+    (t) async {
+      state = 'solicitada';
+      paid = true;
+      service.currentUser = const UsuarioAplicacion(
+        id: '2',
+        name: 'Daniela Rivas',
+        email: 'daniela@example.test',
+        university: '',
+        roles: ['tutor'],
+      );
+      await t.runAsync(service.refreshAccountData);
+      await open(
+        t,
+        Scaffold(appBar: AppBar(actions: const [BotonNotificaciones()])),
+        1440,
+      );
+      await t.tap(find.byTooltip('Notificaciones'));
+      await t.pumpAndSettle();
+      expect(find.text('Aviso general'), findsOneWidget);
+      expect(find.text('Ver detalles'), findsNWidgets(2));
+      await t.tap(find.text('Ver detalles').last);
+      await t.pumpAndSettle();
+      expect(find.byType(MensajesView), findsOneWidget);
+      expect(
+        adapter.requests.any((r) => r.path == '/conversations/10'),
+        isTrue,
+      );
+
+      Navigator.of(t.element(find.byType(MensajesView))).pop();
+      await t.pumpAndSettle();
+      await t.tap(find.byTooltip('Notificaciones'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('Ver detalles').first);
+      await t.pumpAndSettle();
+      expect(
+        ModalRoute.of(t.element(find.byType(GestionCurso)))?.settings.name,
+        RutasAplicacion.courseRequests(id: '9', admin: false),
+      );
+      await t.ensureVisible(find.text('Aceptar solicitud'));
+      await t.tap(find.text('Aceptar solicitud'));
+      await t.pumpAndSettle();
+      expect(
+        find.text('Esperando el pago demo del estudiante'),
+        findsOneWidget,
+      );
+      expect(find.text('Aceptar solicitud'), findsNothing);
+      expect(
+        find.text('Solicitud aceptada. Queda pendiente el pago de prueba.'),
+        findsOneWidget,
+      );
+      final approval = adapter.requests.singleWhere((r) => r.method == 'PATCH');
+      expect(approval.path, '/me/courses/9/enrollments/90');
+      expect(t.takeException(), isNull);
+      await t.pumpWidget(const SizedBox());
+      await t.pump(const Duration(milliseconds: 300));
     },
   );
 

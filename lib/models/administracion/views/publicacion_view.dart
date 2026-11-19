@@ -41,8 +41,13 @@ class PublicacionView extends StatefulWidget {
 class _PublicacionViewState extends State<PublicacionView> {
   Future<Json>? _details;
   bool _reviewRequested = false;
+  bool get _opensRequests =>
+      widget.isTutorial &&
+      widget.initialSection == RutasAplicacion.courseRequestsSection;
   late String _tab = widget.id == null || widget.initiallyEditing
       ? 'edit'
+      : _opensRequests
+      ? 'content'
       : 'overview';
   @override
   void initState() {
@@ -251,6 +256,9 @@ class _PublicacionViewState extends State<PublicacionView> {
             key: ValueKey(row['versionLock']),
             course: row,
             reload: () => setState(_reload),
+            initialTab: _opensRequests
+                ? PestanaGestionCurso.students
+                : PestanaGestionCurso.curriculum,
           ),
         if (row != null && tab == 'updates' && editable)
           _EditorActualizacionAnuncio(

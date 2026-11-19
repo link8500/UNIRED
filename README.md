@@ -1,6 +1,6 @@
 # UniRed
 
-[Guía de uso paso a paso](GUIA-UNIRED.md): tutorías, acreditación, administración, Marketplace y AdSense.
+La [guía técnica de UniRed](GUIA-UNIRED.md) explica el arranque local, la estructura de ambos repositorios, los flujos de la aplicación, las pruebas y el despliegue.
 
 A new Flutter project.
 

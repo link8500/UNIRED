@@ -214,8 +214,17 @@ class _BotonNotificacionesState extends State<BotonNotificaciones> {
     if (data['empresaId'] != null) {
       return '${admin ? RutasAplicacion.adminBusiness : RutasAplicacion.business}?id=${data['empresaId']}';
     }
-    if (data['tutoriaId'] != null) {
-      return '${RutasAplicacion.course}?id=${data['tutoriaId']}';
+    final courseId = (data['cursoId'] ?? data['tutoriaId'])?.toString();
+    if (courseId != null && courseId.isNotEmpty) {
+      final store = AplicacionController.instance;
+      if (notice.type == 'inscripcion' &&
+          store.myTutorials.any((course) => course.id == courseId)) {
+        return RutasAplicacion.courseRequests(id: courseId, admin: admin);
+      }
+      return Uri(
+        path: RutasAplicacion.course,
+        queryParameters: {'id': courseId},
+      ).toString();
     }
     if (data['anuncioId'] != null) {
       return '${RutasAplicacion.listing}?id=${data['anuncioId']}';

@@ -99,7 +99,8 @@ class _GestionCursoState extends State<GestionCurso> {
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
             child: Text(
-              'Revisa cada solicitud. Al aceptarla, el estudiante podrá abrir el aula y acceder al material privado.',
+              'Al aceptar, el estudiante puede entrar a una tutoría gratuita. '
+              'Si tiene precio, podrá entrar cuando confirme el pago de prueba.',
             ),
           ),
           Wrap(
@@ -117,6 +118,11 @@ class _GestionCursoState extends State<GestionCurso> {
                   selected: _studentState == entry.key,
                   onSelected: (_) => setState(() => _studentState = entry.key),
                 ),
+              IconButton(
+                tooltip: 'Actualizar solicitudes y alumnos',
+                onPressed: _reloadStudents,
+                icon: const Icon(Icons.refresh),
+              ),
             ],
           ),
           const SizedBox(height: 14),
@@ -133,6 +139,7 @@ class _GestionCursoState extends State<GestionCurso> {
               children: [
                 for (final student in rows)
                   ExpansionTile(
+                    key: ValueKey(student['id']),
                     initiallyExpanded: student['estado'] == 'solicitada',
                     title: Text(textValue(student['nombre'])),
                     subtitle: Text(
@@ -158,18 +165,31 @@ class _GestionCursoState extends State<GestionCurso> {
                               child: BotonAccionApi(
                                 label: 'Aceptar solicitud',
                                 icon: Icons.verified_user_outlined,
-                                success: 'Solicitud aceptada.',
                                 action: () async {
-                                  await api.object(
+                                  final result = await api.object(
                                     '$root/enrollments/${textValue(student['id'])}',
                                     method: 'PATCH',
                                     data: {
                                       'estado': 'activa',
                                       'motivo':
-                                          'Solicitud aceptada por el tutor. Acceso al material autorizado.',
+                                          'Solicitud aceptada por el tutor.',
                                     },
                                   );
+                                  if (!mounted) return;
                                   _reloadStudents();
+                                  final awaitingPayment =
+                                      result['aprobadaParaPagoEn'] != null;
+                                  ScaffoldMessenger.of(this.context)
+                                    ..hideCurrentSnackBar()
+                                    ..showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          awaitingPayment
+                                              ? 'Solicitud aceptada. Queda pendiente el pago de prueba.'
+                                              : 'Solicitud aceptada. El estudiante ya tiene acceso al aula.',
+                                        ),
+                                      ),
+                                    );
                                 },
                               ),
                             ),

@@ -103,6 +103,7 @@ class RutasAplicacion {
   static const files = '/profile/files';
   static const adminFiles = '/admin/profile/files';
   static const adminOwnAccreditation = '/admin/profile/accreditation';
+  static const courseRequestsSection = 'solicitudes';
 
   /// URLs distintas conservan el entorno y permiten volver desde el editor.
   static String publication({
@@ -117,6 +118,14 @@ class RutasAplicacion {
         : (tutorial ? myTutorial : myProduct),
     queryParameters: {'id': ?id, if (editing) 'edit': '1', 'section': ?section},
   ).toString();
+  static String courseRequests({required String id, required bool admin}) =>
+      publication(
+        tutorial: true,
+        admin: admin,
+        id: id,
+        section: courseRequestsSection,
+      );
+
   static String myPublications(bool tutorial) =>
       '$profile?tab=${tutorial ? 'tutorials' : 'products'}';
 }
